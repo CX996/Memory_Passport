@@ -14,6 +14,10 @@ typedef struct {
 } demo_entry_t;
 
 // 各演示页(定义在各自的 .c 里)
+void demo_memory_enter(void);  void demo_memory_exit(void);
+void demo_memory_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+esp_err_t demo_memory_start(void); esp_err_t demo_memory_stop(void);
+
 void demo_display_enter(void); void demo_display_exit(void);
 void demo_display_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 

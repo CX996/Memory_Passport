@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory Passport - UI Prototype</title>
+  <style>
+    :root {
+      --sky: #1689e8;
+      --sky-dark: #0872c9;
+      --ink: #17202a;
+      --paper: #f4f4ea;
+      --grass: #82be2d;
+      --grass-dark: #55951d;
+      --yellow: #ffd928;
+      --orange: #ffb23e;
+      --red: #e43b2f;
+      --muted: #d9e7ec;
+      --night: #09131f;
+      --night-2: #101f2d;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { color-scheme: dark; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--paper);
+      background:
+        radial-gradient(circle at 15% 0%, #183a56 0, transparent 32%),
+        radial-gradient(circle at 100% 20%, #102e47 0, transparent 30%),
+        var(--night);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .wrap {
+      width: min(1160px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 30px 0 54px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #84c9ff;
+      font: 700 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .top-note {
+      max-width: 360px;
+      margin: 0;
+      color: #a8bac8;
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: right;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+      align-items: start;
+      gap: clamp(26px, 6vw, 76px);
+    }
+
+    .stage {
+      display: grid;
+      justify-items: center;
+    }
+
+    .device {
+      position: relative;
+      width: min(370px, 86vw);
+      padding: 68px 40px 138px;
+      border: 2px solid #65727a;
+      border-radius: 42px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.15), transparent 22%),
+        linear-gradient(160deg, #36424a, #1d272d 65%);
+      box-shadow: 0 28px 60px rgba(0,0,0,.46), inset 0 0 0 7px rgba(0,0,0,.17);
+    }
+
+    .device::before,
+    .device::after {
+      content: "";
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 3px solid #89959b;
+      border-radius: 50%;
+      background: #29343a;
+      box-shadow: inset 0 0 0 2px #141b20;
+    }
+
+    .device::before { top: 28px; left: 24px; }
+    .device::after { top: 28px; right: 24px; }
+
+    .lanyard {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      width: 106px;
+      height: 32px;
+      border: 7px solid #11191e;
+      border-radius: 22px;
+      transform: translateX(-50%);
+      box-shadow: inset 0 0 0 2px #647078;
+    }
+
+    .screw {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border: 2px solid #9ba7ab;
+      border-radius: 50%;
+      background: #253138;
+    }
+
+    .screw.one { left: 20px; bottom: 104px; }
+    .screw.two { right: 20px; bottom: 104px; }
+
+    .screen {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+      border: 8px solid #11181d;
+      border-radius: 12px;
+      background: var(--sky);
+      box-shadow: inset 0 0 0 2px #35444c, 0 7px 0 #111;
+      isolation: isolate;
+    }
+
+    .screen::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      pointer-events: none;
+      box-shadow: inset 0 0 28px rgba(0,0,0,.14);
+    }
+
+    .cloud {
+      position: absolute;
+      z-index: 1;
+      top: 4%;
+      right: 4%;
+      width: 18%;
+      height: 3.3%;
+      background: #fff;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      background: #fff;
+    }
+
+    .cloud::before { left: 18%; width: 25%; height: 145%; }
+    .cloud::after { right: 17%; width: 22%; height: 125%; }
+
+    .title-plate {
+      position: absolute;
+      z-index: 3;
+      top: 2.5%;
+      left: 2%;
+      display: grid;
+      width: 63%;
+      height: 10.3%;
+      place-items: center;
+      border: 3px solid var(--ink);
+      background: var(--paper);
+      box-shadow: 5px 5px 0 var(--ink);
+      color: var(--ink);
+      font: 900 18px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .06em;
+    }
+
+    .battery {
+      position: absolute;
+      z-index: 4;
+      top: 10.4%;
+      right: 4%;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--paper);
+      font: 800 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .battery-icon {
+      position: relative;
+      width: 18px;
+      height: 10px;
+      border: 2px solid var(--paper);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .battery-icon::before {
+      content: "";
+      position: absolute;
+      top: 2px;
+      right: -5px;
+      width: 3px;
+      height: 4px;
+      background: var(--paper);
+    }
+
+    .battery-icon::after {
+      content: "";
+      position: absolute;
+      inset: 2px 3px 2px 2px;
+      background: var(--grass);
+    }
+
+    .main-panel {
+      position: absolute;
+      z-index: 2;
+      top: 17%;
+      left: 5%;
+      width: 90%;
+      height: 56%;
+      padding: 5% 5% 4%;
+      border: 4px solid var(--ink);
+      background: var(--paper);
+      box-shadow: 5px 6px 0 var(--ink);
+      color: var(--ink);
+      transition: border-color .18s ease, background-color .18s ease;
+    }
+
+    .panel-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #426176;
+      font: 900 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .04em;
+    }
+
+    .state-word {
+      margin-top: 6%;
+      color: var(--sky-dark);
+      font: 950 29px/.92 Impact, Haettenschweiler, "Arial Black", sans-serif;
+      letter-spacing: .035em;
+      text-align: center;
+      transition: color .18s ease, transform .18s ease;
+    }
+
+    .prompt {
+      min-height: 18px;
+      margin-top: 3%;
+      color: #486273;
+      font: 800 10px/1.15 ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .key-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5%;
+      margin-top: 7%;
+    }
+
+    .key-card {
+      min-width: 0;
+      min-height: 72px;
+      padding: 6px 2px 7px;
+      border: 3px solid var(--ink);
+      background: #e3eee9;
+      box-shadow: 4px 4px 0 var(--ink);
+      color: var(--ink);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .12s ease, background-color .12s ease, border-color .12s ease, opacity .12s ease;
+    }
+
+    .key-card:hover { transform: translate(-1px, -1px); }
+    .key-card:focus-visible,
+    .action:focus-visible,
+    .preview-btn:focus-visible,
+    .switch input:focus-visible + .switch-ui { outline: 3px solid #fff; outline-offset: 3px; }
+
+    .key-card .key-name {
+      display: block;
+      font: 950 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .03em;
+    }
+
+    .key-card .key-symbol {
+      display: block;
+      margin-top: 6px;
+      font: 950 29px/.8 Arial, sans-serif;
+    }
+
+    .key-card[data-token="UP"] { background: #bfe5f8; }
+    .key-card[data-token="DOWN"] { background: #ffd18e; }
+    .key-card[data-token="OK"] { background: #ffe879; }
+    .key-card.is-active {
+      border-color: #fff;
+      background: var(--yellow) !important;
+      box-shadow: 0 0 0 3px var(--ink), 5px 5px 0 #fff;
+      transform: translate(-2px, -3px) scale(1.03);
+    }
+    .key-card.is-correct { background: var(--grass) !important; }
+    .key-card.is-wrong { background: var(--red) !important; color: #fff; }
+    .key-grid.is-muted .key-card { opacity: .42; filter: saturate(.55); }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-height: 15px;
+      margin-top: 7%;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border: 2px solid #668091;
+      background: transparent;
+    }
+
+    .dot.is-filled { border-color: var(--grass-dark); background: var(--grass); }
+    .dot.is-current { border-color: var(--ink); background: var(--yellow); transform: scale(1.25); }
+
+    .hint {
+      min-height: 12px;
+      margin-top: 4%;
+      color: #4d6979;
+      font: 900 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .04em;
+      text-align: center;
+    }
+
+    .grass {
+      position: absolute;
+      z-index: 1;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 10.6%;
+      border-top: 4px solid #a7d93e;
+      background:
+        repeating-linear-gradient(90deg, var(--grass-dark) 0 11%, transparent 11% 16%),
+        var(--grass);
+    }
+
+    .grass::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 22%;
+      background: repeating-linear-gradient(90deg, #75452e 0 8%, transparent 8% 13%);
+    }
+
+    .mascot {
+      position: absolute;
+      z-index: 4;
+      bottom: 11.5%;
+      left: 50%;
+      width: 44px;
+      height: 55px;
+      transform: translateX(-50%);
+      transition: transform .25s ease;
+      pointer-events: none;
+    }
+
+    .mascot.jump { animation: jump .25s steps(2, end); }
+    .antenna { position: absolute; top: 0; left: 20px; width: 4px; height: 8px; background: var(--ink); }
+    .antenna::after { content: ""; position: absolute; top: 0; left: -3px; width: 10px; height: 4px; background: var(--orange); }
+    .robot-head { position: absolute; top: 7px; left: 5px; width: 34px; height: 25px; border: 4px solid var(--ink); background: #b9f3ff; box-shadow: -5px 5px 0 #7557d9, 5px 5px 0 #7557d9; }
+    .robot-head::before, .robot-head::after { content: ""; position: absolute; top: 6px; width: 5px; height: 8px; background: #294b7a; }
+    .robot-head::before { left: 6px; }
+    .robot-head::after { right: 6px; }
+    .robot-body { position: absolute; top: 32px; left: 10px; width: 25px; height: 16px; border: 4px solid var(--ink); background: #7557d9; }
+    .robot-body::before { content: ""; position: absolute; top: -4px; left: 4px; width: 13px; height: 4px; background: var(--orange); }
+    .robot-feet::before, .robot-feet::after { content: ""; position: absolute; bottom: 0; width: 10px; height: 5px; background: var(--ink); }
+    .robot-feet::before { left: 9px; }
+    .robot-feet::after { right: 9px; }
+
+    @keyframes jump {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      45% { transform: translateX(-50%) translateY(-6px); }
+    }
+
+    .device-base {
+      position: absolute;
+      right: 40px;
+      bottom: 30px;
+      left: 40px;
+      height: 82px;
+      border-top: 1px solid #4d5b62;
+      background: #202a30;
+    }
+
+    .device-base::before {
+      content: "OPEN WEARABLE AI PASSPORT";
+      position: absolute;
+      right: 0;
+      bottom: 14px;
+      left: 0;
+      color: #aab6ba;
+      font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .08em;
+      text-align: center;
+    }
+
+    .speaker {
+      position: absolute;
+      right: 17px;
+      bottom: 23px;
+      width: 28px;
+      height: 52px;
+      border: 4px solid #10181d;
+      border-radius: 16px;
+      background: repeating-linear-gradient(160deg, #4d5a60 0 3px, #1b252a 3px 7px);
+    }
+
+    .stage-note {
+      margin: 18px 0 0;
+      color: #8298a7;
+      font: 700 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+      text-align: center;
+    }
+
+    .inspector {
+      min-width: 0;
+      padding-top: 6px;
+    }
+
+    .inspector-card {
+      padding: 22px;
+      border: 1px solid #284559;
+      border-radius: 18px;
+      background: rgba(16,31,45,.84);
+      box-shadow: 0 16px 35px rgba(0,0,0,.2);
+    }
+
+    .inspector-card + .inspector-card { margin-top: 16px; }
+
+    .card-kicker {
+      margin: 0 0 8px;
+      color: #7fc8ff;
+      font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: -.02em;
+    }
+
+    .card-copy {
+      margin: 10px 0 0;
+      color: #a9bdca;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .action-row,
+    .preview-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    .action,
+    .preview-btn {
+      border: 2px solid #7eafcb;
+      border-radius: 9px;
+      background: #173348;
+      color: var(--paper);
+      cursor: pointer;
+      font-weight: 800;
+      transition: background-color .12s ease, transform .12s ease, border-color .12s ease;
+    }
+
+    .action { padding: 10px 15px; }
+    .preview-btn { padding: 8px 11px; font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .action:hover, .preview-btn:hover { border-color: #fff; background: #24516f; transform: translateY(-1px); }
+    .action.primary { border-color: var(--yellow); background: #5c4d12; color: #fff7bc; }
+    .action.danger { border-color: #ff8278; background: #50211e; }
+
+    .control-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid #284559;
+    }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: #c6d5dc;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .switch input { position: absolute; opacity: 0; pointer-events: none; }
+
+    .switch-ui {
+      position: relative;
+      width: 35px;
+      height: 20px;
+      border: 2px solid #607b8d;
+      border-radius: 12px;
+      background: #172b3b;
+    }
+
+    .switch-ui::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #8da4b1;
+      transition: transform .15s ease, background-color .15s ease;
+    }
+
+    .switch input:checked + .switch-ui::after { transform: translateX(15px); background: var(--yellow); }
+
+    .keymap {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .keymap-item {
+      padding: 12px 8px;
+      border: 1px solid #31546b;
+      border-radius: 10px;
+      background: #11283b;
+      text-align: center;
+    }
+
+    .keymap-item b { display: block; color: var(--paper); font-size: 13px; }
+    .keymap-item span { display: block; margin-top: 4px; color: #8fb8ce; font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      color: #9fb8c7;
+      font: 700 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--grass); box-shadow: 0 0 12px var(--grass); }
+
+    .token-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 14px;
+      color: #9eb7c5;
+      font: 700 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .token-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--yellow); }
+    .token-legend span:nth-child(2)::before { background: var(--orange); }
+    .token-legend span:nth-child(3)::before { background: #9bdcff; }
+
+    .screen[data-state="success"] .main-panel { border-color: var(--grass-dark); }
+    .screen[data-state="success"] .state-word { color: var(--grass-dark); transform: scale(1.04); }
+    .screen[data-state="result"] .main-panel,
+    .screen[data-state="max"] .main-panel { border-color: var(--red); }
+    .screen[data-state="result"] .state-word,
+    .screen[data-state="max"] .state-word { color: var(--red); }
+    .screen[data-state="playback"] .state-word { color: var(--sky-dark); }
+    .screen[data-state="input"] .state-word { color: #b26b00; }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 20;
+      max-width: min(360px, calc(100vw - 44px));
+      padding: 12px 15px;
+      border: 2px solid var(--yellow);
+      border-radius: 10px;
+      background: #302a0b;
+      color: #fff4a7;
+      font: 800 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 24px, 520px); padding-top: 20px; }
+      .topbar { display: block; }
+      .top-note { margin-top: 12px; text-align: left; }
+      .layout { grid-template-columns: 1fr; gap: 26px; }
+      .device { width: min(340px, 88vw); }
+      .inspector { padding-top: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">FoloToy AI Passport · design preview</p>
+        <h1>Memory Passport</h1>
+      </div>
+      <p class="top-note">240 × 320 portrait UI prototype<br>Three keys · offline · short session</p>
+    </header>
+
+    <div class="layout">
+      <section class="stage" aria-label="AI Passport device preview">
+        <div class="device">
+          <div class="lanyard" aria-hidden="true"></div>
+          <span class="screw one" aria-hidden="true"></span>
+          <span class="screw two" aria-hidden="true"></span>
+          <div class="screen" id="screen" data-state="ready">
+            <div class="cloud" aria-hidden="true"></div>
+            <div class="title-plate">MEMORY</div>
+            <div class="battery" aria-label="Battery 85 percent">
+              <span class="battery-icon" aria-hidden="true"></span>
+              <span id="batteryText">85%</span>
+            </div>
+
+            <div class="main-panel">
+              <div class="panel-top">
+                <span id="levelText">READY</span>
+                <span id="bestText">BEST 7</span>
+              </div>
+              <div class="state-word" id="stateWord" aria-live="polite">READY</div>
+              <div class="prompt" id="prompt">Press OK to begin</div>
+
+              <div class="key-grid" id="keyGrid" aria-label="Three physical keys">
+                <button class="key-card" type="button" data-token="UP" aria-label="UP key">
+                  <span class="key-name">UP</span><span class="key-symbol">↑</span>
+                </button>
+                <button class="key-card" type="button" data-token="DOWN" aria-label="DOWN key">
+                  <span class="key-name">DOWN</span><span class="key-symbol">↓</span>
+                </button>
+                <button class="key-card" type="button" data-token="OK" aria-label="OK key">
+                  <span class="key-name">OK</span><span class="key-symbol">●</span>
+                </button>
+              </div>
+
+              <div class="progress-row" id="progressRow" aria-label="Sequence progress"></div>
+              <div class="hint" id="hint">OK START · HOLD OK BACK</div>
+            </div>
+
+            <div class="mascot" id="mascot" aria-hidden="true">
+              <span class="antenna"></span>
+              <span class="robot-head"></span>
+              <span class="robot-body"></span>
+              <span class="robot-feet"></span>
+            </div>
+            <div class="grass" aria-hidden="true"></div>
+          </div>
+          <div class="device-base" aria-hidden="true"></div>
+          <div class="speaker" aria-hidden="true"></div>
+        </div>
+        <p class="stage-note">当前状态：<span id="outsideStatus">READY · click OK or press Enter</span></p>
+      </section>
+
+      <aside class="inspector" aria-label="Prototype controls and notes">
+        <section class="inspector-card">
+          <p class="card-kicker">Interactive prototype</p>
+          <h2>按设备一样试一局</h2>
+          <p class="card-copy">点击屏幕上的三枚键，或使用键盘 <b>↑</b>、<b>↓</b>、<b>Enter</b>。播放阶段会自动高亮序列；进入 YOUR TURN 后按相同顺序复现。</p>
+          <div class="action-row">
+            <button class="action primary" id="startButton" type="button">▶ Start demo</button>
+            <button class="action" id="backButton" type="button">Back / reset view</button>
+          </div>
+          <div class="control-line">
+            <label class="switch"><input id="soundToggle" type="checkbox" checked><span class="switch-ui"></span>browser tones</label>
+            <label class="switch"><input id="batteryToggle" type="checkbox" checked><span class="switch-ui"></span>battery</label>
+          </div>
+          <div class="status-line"><span class="status-dot" aria-hidden="true"></span><span id="eventStatus">READY · waiting for OK</span></div>
+        </section>
+
+        <section class="inspector-card">
+          <p class="card-kicker">State previews</p>
+          <h2>快速查看关键画面</h2>
+          <p class="card-copy">这些按钮只切换展示状态，不改变固件；适合评审信息层级、字号和色彩。</p>
+          <div class="preview-row">
+            <button class="preview-btn" type="button" data-preview="ready">READY</button>
+            <button class="preview-btn" type="button" data-preview="playback">PLAYBACK</button>
+            <button class="preview-btn" type="button" data-preview="input">YOUR TURN</button>
+            <button class="preview-btn" type="button" data-preview="result">RESULT</button>
+            <button class="preview-btn" type="button" data-preview="max">MAX CLEAR</button>
+          </div>
+        </section>
+
+        <section class="inspector-card">
+          <p class="card-kicker">Interaction contract</p>
+          <h2>一眼看懂三键</h2>
+          <div class="keymap">
+            <div class="keymap-item"><b>↑ UP</b><span>token 1</span></div>
+            <div class="keymap-item"><b>↓ DOWN</b><span>token 2</span></div>
+            <div class="keymap-item"><b>● OK</b><span>start / token 3</span></div>
+          </div>
+          <div class="token-legend"><span>visual cue</span><span>tone cue</span><span>no color-only meaning</span></div>
+          <p class="card-copy">长按 OK 在原型中回到 READY；结果页显示 <b>TRY AGAIN</b>，音频关闭时视觉流程仍完整。</p>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const $ = (selector) => document.querySelector(selector);
+      const screen = $("#screen");
+      const stateWord = $("#stateWord");
+      const prompt = $("#prompt");
+      const levelText = $("#levelText");
+      const bestText = $("#bestText");
+      const hint = $("#hint");
+      const keyGrid = $("#keyGrid");
+      const cards = [...document.querySelectorAll(".key-card")];
+      const progressRow = $("#progressRow");
+      const mascot = $("#mascot");
+      const toast = $("#toast");
+      const outsideStatus = $("#outsideStatus");
+      const eventStatus = $("#eventStatus");
+      const battery = $(".battery");
+
+      const sequence = ["UP", "DOWN", "OK", "UP", "OK", "DOWN", "UP", "DOWN", "OK", "DOWN", "UP", "OK"];
+      const maxLevel = 12;
+      const defaultBest = 7;
+      const copy = {
+        ready:    { word: "READY",      prompt: "Press OK to begin",       hint: "OK START · HOLD OK BACK" },
+        playback: { word: "WATCH",      prompt: "Device is showing the cue", hint: "WATCH · DO NOT PRESS" },
+        input:    { word: "YOUR TURN",  prompt: "Repeat the sequence",       hint: "5 SEC EACH · HOLD OK BACK" },
+        success:  { word: "GOOD",       prompt: "Round cleared",              hint: "NEXT LEVEL LOADING" },
+        result:   { word: "WRONG",      prompt: "Sequence ended",             hint: "TRY AGAIN · HOLD OK BACK" },
+        timeout:  { word: "TIME UP",   prompt: "No key in time",              hint: "TRY AGAIN · HOLD OK BACK" },
+        max:      { word: "MAX CLEAR",  prompt: "MVP ceiling reached",         hint: "12 / 12 · TRY AGAIN" }
+      };
+
+      let state = "ready";
+      let level = 3;
+      let inputIndex = 0;
+      let playbackIndex = 0;
+      let activeToken = null;
+      let lastInput = null;
+      let clearLevel = 0;
+      let failedAt = 0;
+      let reason = "WRONG";
+      let best = readBest();
+      let timers = [];
+      let audioContext = null;
+      let toastTimer = null;
+      let holdTimer = null;
+      let longFired = false;
+      let soundOn = true;
+
+      function readBest() {
+        try {
+          const stored = localStorage.getItem("memory-passport-best");
+          if (stored === null) return defaultBest;
+          const value = Number(stored);
+          return Number.isInteger(value) && value >= 0 && value <= maxLevel ? value : defaultBest;
+        } catch (_) { return defaultBest; }
+      }
+
+      function writeBest() {
+        try { localStorage.setItem("memory-passport-best", String(best)); } catch (_) { /* file:// may deny storage */ }
+      }
+
+      function clearTimers() {
+        timers.forEach((timer) => { clearTimeout(timer); clearInterval(timer); });
+        timers = [];
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+
+      function later(callback, delay) {
+        const timer = setTimeout(callback, delay);
+        timers.push(timer);
+        return timer;
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1900);
+      }
+
+      function jump() {
+        mascot.classList.remove("jump");
+        void mascot.offsetWidth;
+        mascot.classList.add("jump");
+      }
+
+      function tone(token, duration = 150) {
+        if (!soundOn) return;
+        try {
+          audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+          if (audioContext.state === "suspended") audioContext.resume();
+          const frequencies = { UP: 523, DOWN: 659, OK: 784, GOOD: 988, WRONG: 220, "TIME UP": 196 };
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = "square";
+          oscillator.frequency.value = frequencies[token] || 440;
+          gain.gain.setValueAtTime(.035, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + duration / 1000);
+          oscillator.connect(gain).connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + duration / 1000);
+        } catch (_) { /* visual feedback remains the source of truth */ }
+      }
+
+      function renderProgress() {
+        progressRow.innerHTML = "";
+        const filled = state === "input" ? inputIndex : state === "success" || state === "max" ? level : playbackIndex;
+        for (let index = 0; index < maxLevel; index += 1) {
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          if (index < filled) dot.classList.add("is-filled");
+          if (state === "playback" && index === playbackIndex && activeToken) dot.classList.add("is-current");
+          if (state === "input" && index === inputIndex && inputIndex < level) dot.classList.add("is-current");
+          progressRow.appendChild(dot);
+        }
+      }
+
+      function render() {
+        const view = state === "timeout" ? copy.timeout : copy[state];
+        screen.dataset.state = state === "timeout" ? "result" : state;
+        stateWord.textContent = view.word;
+        prompt.textContent = view.prompt;
+        hint.textContent = view.hint;
+        bestText.textContent = `BEST ${best}`;
+        if (state === "ready") levelText.textContent = "READY";
+        else if (state === "result" || state === "timeout") levelText.textContent = `CLEAR ${clearLevel}`;
+        else if (state === "max") levelText.textContent = "12 / 12";
+        else levelText.textContent = `LEVEL ${level}/12`;
+
+        const muted = ["playback", "success", "result", "timeout", "max"].includes(state);
+        keyGrid.classList.toggle("is-muted", muted);
+        cards.forEach((card) => {
+          const token = card.dataset.token;
+          card.classList.toggle("is-active", activeToken === token);
+          card.classList.toggle("is-correct", state === "input" && lastInput === token && inputIndex > 0 && sequence[inputIndex - 1] === token);
+          card.classList.toggle("is-wrong", (state === "result" || state === "timeout") && lastInput === token && reason === "WRONG");
+        });
+        renderProgress();
+        const progress = state === "playback" ? `${Math.min(playbackIndex + (activeToken ? 1 : 0), level)}/${level}`
+          : state === "input" ? `${inputIndex}/${level}` : state === "success" ? `${level}/${level}` : "";
+        const status = state === "ready" ? "READY · waiting for OK"
+          : state === "playback" ? `PLAYBACK · ${progress}`
+          : state === "input" ? `YOUR TURN · ${progress} · ${lastInput || "waiting"}`
+          : state === "success" ? `GOOD · clear ${clearLevel}`
+          : state === "max" ? "MAX CLEAR · best 12"
+          : `${view.word} · clear ${clearLevel}`;
+        outsideStatus.textContent = status.toLowerCase();
+        eventStatus.textContent = status;
+      }
+
+      function startInputClock() {
+        let remaining = 5;
+        const interval = setInterval(() => {
+          remaining -= .1;
+          if (state !== "input") { clearInterval(interval); return; }
+          hint.textContent = `TIME ${Math.max(0, remaining).toFixed(1)}S · HOLD OK BACK`;
+          if (remaining <= 0) {
+            clearInterval(interval);
+            finishResult("TIME UP");
+          }
+        }, 100);
+        timers.push(interval);
+      }
+
+      function beginPlayback() {
+        clearTimers();
+        state = "playback";
+        playbackIndex = 0;
+        inputIndex = 0;
+        activeToken = null;
+        lastInput = null;
+        render();
+        later(playNextCue, 450);
+      }
+
+      function playNextCue() {
+        if (state !== "playback") return;
+        if (playbackIndex >= level) {
+          activeToken = null;
+          state = "input";
+          inputIndex = 0;
+          render();
+          startInputClock();
+          return;
+        }
+        activeToken = sequence[playbackIndex];
+        tone(activeToken, 230);
+        render();
+        later(() => {
+          activeToken = null;
+          playbackIndex += 1;
+          render();
+          later(playNextCue, 160);
+        }, 360);
+      }
+
+      function startSession() {
+        clearTimers();
+        level = 3;
+        inputIndex = 0;
+        playbackIndex = 0;
+        clearLevel = 0;
+        lastInput = null;
+        activeToken = null;
+        state = "ready";
+        render();
+        showToast("READY · playback starts in a moment");
+        later(beginPlayback, 500);
+      }
+
+      function finishResult(resultReason) {
+        clearTimers();
+        reason = resultReason;
+        state = resultReason === "TIME UP" ? "timeout" : "result";
+        failedAt = level;
+        activeToken = null;
+        render();
+        tone(resultReason, 240);
+        showToast(resultReason === "TIME UP" ? "TIME UP · no input received" : `WRONG · failed at level ${failedAt}`);
+      }
+
+      function handleToken(token) {
+        if (state === "ready" || state === "result" || state === "timeout" || state === "max") {
+          if (token === "OK") startSession();
+          return;
+        }
+        if (state !== "input") return;
+        activeToken = token;
+        lastInput = token;
+        tone(token, 120);
+        jump();
+        if (token !== sequence[inputIndex]) {
+          render();
+          later(() => finishResult("WRONG"), 220);
+          return;
+        }
+        inputIndex += 1;
+        render();
+        if (inputIndex >= level) {
+          clearTimers();
+          clearLevel = level;
+          if (clearLevel > best) { best = clearLevel; writeBest(); }
+          state = "success";
+          activeToken = null;
+          tone("GOOD", 210);
+          render();
+          later(() => {
+            if (level >= maxLevel) { state = "max"; render(); return; }
+            level += 1;
+            beginPlayback();
+          }, 900);
+          return;
+        }
+        activeToken = null;
+        render();
+        clearTimers();
+        startInputClock();
+      }
+
+      function backToReady() {
+        clearTimers();
+        state = "ready";
+        activeToken = null;
+        lastInput = null;
+        level = 3;
+        clearLevel = 0;
+        render();
+        showToast("BACK · ready screen");
+      }
+
+      function preview(name) {
+        clearTimers();
+        activeToken = null;
+        lastInput = null;
+        level = 4;
+        inputIndex = name === "input" ? 2 : 0;
+        playbackIndex = name === "playback" ? 1 : 0;
+        clearLevel = name === "result" ? 3 : name === "max" ? 12 : 0;
+        reason = name === "result" ? "WRONG" : "TIME UP";
+        state = name === "ready" ? "ready" : name;
+        if (name === "playback") activeToken = sequence[1];
+        if (name === "max") { level = 12; clearLevel = 12; }
+        render();
+        showToast(`Preview · ${name.toUpperCase()}`);
+      }
+
+      function bindLongPress(button) {
+        const token = button.dataset.token;
+        button.addEventListener("pointerdown", () => {
+          longFired = false;
+          holdTimer = setTimeout(() => {
+            longFired = true;
+            if (token === "OK") backToReady();
+            else showToast("HOLD OK BACK");
+          }, 650);
+        });
+        button.addEventListener("pointerup", () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; });
+        button.addEventListener("pointercancel", () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; });
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          if (longFired) { longFired = false; return; }
+          handleToken(token);
+        });
+      }
+
+      cards.forEach(bindLongPress);
+      $("#startButton").addEventListener("click", startSession);
+      $("#backButton").addEventListener("click", backToReady);
+      $("#soundToggle").addEventListener("change", (event) => {
+        soundOn = event.target.checked;
+        showToast(soundOn ? "SOUND ON" : "SOUND OFF · visual fallback active");
+      });
+      $("#batteryToggle").addEventListener("change", (event) => {
+        battery.hidden = !event.target.checked;
+      });
+      document.querySelectorAll("[data-preview]").forEach((button) => {
+        button.addEventListener("click", () => preview(button.dataset.preview));
+      });
+
+      document.addEventListener("keydown", (event) => {
+        const token = event.key === "ArrowUp" ? "UP" : event.key === "ArrowDown" ? "DOWN" : event.key === "Enter" ? "OK" : null;
+        if (!token || event.repeat) return;
+        event.preventDefault();
+        if (token === "OK") {
+          holdTimer = setTimeout(() => { longFired = true; backToReady(); }, 650);
+          return;
+        }
+        handleToken(token);
+      });
+      document.addEventListener("keyup", (event) => {
+        if (event.key !== "Enter") return;
+        if (holdTimer) clearTimeout(holdTimer);
+        holdTimer = null;
+        if (!longFired) handleToken("OK");
+        longFired = false;
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

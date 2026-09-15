@@ -23,6 +23,8 @@
 static const char *TAG = "main";
 
 static const demo_entry_t DEMOS[] = {
+    { .name = "Memory", .enter = demo_memory_enter, .exit = demo_memory_exit,
+      .key = demo_memory_key, .start = demo_memory_start, .stop = demo_memory_stop },
     { .name = "Display", .enter = demo_display_enter, .exit = demo_display_exit,
       .key = demo_display_key },
     { .name = "Button", .enter = demo_button_enter, .exit = demo_button_exit,
@@ -74,7 +76,8 @@ static void menu_build(void) {
 
     for (size_t i = 0; i < DEMO_COUNT; i++) {
         int x = 11 + (int)(i % 2) * 112;
-        int y = 52 + (int)(i / 2) * 47;
+        // Keep four menu rows above the mascot now that Memory adds an eighth demo.
+        int y = 50 + (int)(i / 2) * 42;
         s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 40, UI_PAPER);
         s_rows[i] = lv_label_create(s_cards[i]);
         lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
@@ -213,23 +216,27 @@ void app_main(void) {
     demo_navigation_init(&s_navigation, DEMO_COUNT);
 
     // 其余外设单项失败不阻塞:菜单里标 [FAIL],其他项照常可测。
-    s_ok[0] = true;                                   // Display 已确认可用
     esp_err_t input_err = input_dispatch_init();
     esp_err_t button_err = input_err == ESP_OK
                          ? bsp_button_init(on_key, NULL)
                          : ESP_ERR_INVALID_STATE;
-    s_ok[1] = input_err == ESP_OK && button_err == ESP_OK;
+    const bool input_ok = input_err == ESP_OK && button_err == ESP_OK;
     if (input_err != ESP_OK) {
         ESP_LOGE(TAG, "按键事件任务创建失败: %s", esp_err_to_name(input_err));
     } else if (button_err != ESP_OK) {
         ESP_LOGE(TAG, "按键初始化失败: %s", esp_err_to_name(button_err));
         input_dispatch_deinit();
     }
-    s_ok[2] = (bsp_audio_init() == ESP_OK);
-    s_ok[3] = (bsp_battery_init() == ESP_OK);
-    s_ok[4] = true;                                    // 页面内按需初始化并显示错误
-    s_ok[5] = true;
+    const bool audio_ok = bsp_audio_init() == ESP_OK;
+    const bool battery_ok = bsp_battery_init() == ESP_OK;
+    s_ok[0] = input_ok;                                // Memory:音频/NVS/电量均可降级
+    s_ok[1] = true;                                    // Display 已确认可用
+    s_ok[2] = input_ok;
+    s_ok[3] = audio_ok;
+    s_ok[4] = battery_ok;
+    s_ok[5] = true;                                    // 页面内按需初始化并显示错误
     s_ok[6] = true;
+    s_ok[7] = true;
 
     if (bsp_lvgl_lock(1000)) {
         enter_menu();
@@ -237,6 +244,6 @@ void app_main(void) {
         s_input_ready = true;
     }
 
-    ESP_LOGI(TAG, "就绪:Display=%d Button=%d Audio=%d Battery=%d",
-             s_ok[0], s_ok[1], s_ok[2], s_ok[3]);
+    ESP_LOGI(TAG, "就绪:Memory=%d Display=%d Button=%d Audio=%d Battery=%d",
+             s_ok[0], s_ok[1], s_ok[2], s_ok[3], s_ok[4]);
 }
