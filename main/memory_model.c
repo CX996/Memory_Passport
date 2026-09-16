@@ -14,13 +14,8 @@ static uint32_t next_random(memory_model_t *model) {
     return model->rng;
 }
 
-static memory_token_t next_token(memory_model_t *model, memory_token_t previous,
-                                 bool has_previous) {
-    memory_token_t token;
-    do {
-        token = (memory_token_t)(next_random(model) % MEMORY_TOKEN_COUNT);
-    } while (has_previous && token == previous);
-    return token;
+static memory_token_t next_token(memory_model_t *model) {
+    return (memory_token_t)(next_random(model) % MEMORY_TOKEN_COUNT);
 }
 
 /* 清除本轮时钟与 PRESS 去重临时状态；不修改序列或历史最佳。 */
@@ -51,20 +46,16 @@ static bool click_is_pair(const memory_model_t *model, memory_token_t token, uin
     return now_ms - model->press_time_ms <= MEMORY_PRESS_CLICK_DEDUPE_MS;
 }
 
-/* 生成首轮固定长度序列；相邻 token 不重复。 */
-static void generate_initial_sequence(memory_model_t *model) {
-    model->sequence_len = MEMORY_INITIAL_LEVEL;
-    for (uint8_t i = 0; i < model->sequence_len; i++) {
-        const bool has_previous = i != 0;
-        const memory_token_t previous =
-            has_previous ? (memory_token_t)model->sequence[i - 1] : MEMORY_TOKEN_INVALID;
-        model->sequence[i] = (uint8_t)next_token(model, previous, has_previous);
-    }
+/* 每一关重新生成完整序列；不继承上一关的前缀，重复 token 也属于有效随机结果。 */
+static void generate_sequence(memory_model_t *model, uint8_t length) {
+    model->sequence_len = length;
+    for (uint8_t i = 0; i < length; i++)
+        model->sequence[i] = (uint8_t)next_token(model);
 }
 
 /* 开启新局并保留 best_level；新局从长度 3 的 PLAYBACK 开始。 */
 static void reset_session(memory_model_t *model) {
-    generate_initial_sequence(model);
+    generate_sequence(model, MEMORY_INITIAL_LEVEL);
     model->clear_level = 0;
     model->failed_at = 0;
     model->failure = MEMORY_FAILURE_NONE;
@@ -207,9 +198,7 @@ memory_event_t memory_model_tick(memory_model_t *model, uint64_t now_ms) {
         return MEMORY_EVENT_MAX_REACHED;
     }
 
-    const memory_token_t previous = (memory_token_t)model->sequence[model->sequence_len - 1];
-    model->sequence[model->sequence_len] = (uint8_t)next_token(model, previous, true);
-    model->sequence_len++;
+    generate_sequence(model, model->sequence_len + 1U);
     model->input_index = 0;
     model->state = MEMORY_STATE_PLAYBACK;
     return MEMORY_EVENT_NEXT_ROUND;

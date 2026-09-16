@@ -1,46 +1,39 @@
-// main/main.c —— FoloToy AI Passport BSP 驱动参考示例:初始化 + 菜单 + 按键分发。
-//
-// 按键语义(全局统一):
-//   上/下 短按   菜单中=移动选中项;演示页中=该页自定义
-//   确定  短按   菜单中=进入选中项;演示页中=该页自定义
-//   确定  长按   演示页中=返回菜单(由本文件统一拦截)
+// Memory Passport application shell: boot splash, home, settings, and memory game.
 #include "bsp_i2c.h"
 #include "bsp_display.h"
 #include "bsp_button.h"
-#include "bsp_audio.h"
 #include "bsp_battery.h"
-#include "bsp_pins.h"      // 错误日志里要打印 BSP_LCD_* 引脚号
+#include "bsp_pins.h"
 #include "demo.h"
 #include "demo_navigation.h"
 #include "ui_pixel.h"
+
 #include "lvgl.h"
 #include "esp_log.h"
-#include "esp_sleep.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
+#include <stdio.h>
+#include <stddef.h>
+#include <time.h>
+
 static const char *TAG = "main";
 
-static const demo_entry_t DEMOS[] = {
+static void app_exit_enter(void);
+static void app_exit_exit(void);
+static void app_exit_key(bsp_btn_t btn, bsp_btn_ev_t event);
+
+static const demo_entry_t MENU[] = {
     { .name = "Memory", .enter = demo_memory_enter, .exit = demo_memory_exit,
       .key = demo_memory_key, .start = demo_memory_start, .stop = demo_memory_stop },
-    { .name = "Display", .enter = demo_display_enter, .exit = demo_display_exit,
-      .key = demo_display_key },
-    { .name = "Button", .enter = demo_button_enter, .exit = demo_button_exit,
-      .key = demo_button_key },
-    { .name = "Audio", .enter = demo_audio_enter, .exit = demo_audio_exit,
-      .key = demo_audio_key, .start = demo_audio_start, .stop = demo_audio_stop },
-    { .name = "Battery", .enter = demo_battery_enter, .exit = demo_battery_exit,
-      .key = demo_battery_key },
-    { .name = "Wi-Fi", .enter = demo_wifi_enter, .exit = demo_wifi_exit,
-      .key = demo_wifi_key, .start = demo_wifi_start, .stop = demo_wifi_stop },
-    { .name = "BLE", .enter = demo_ble_enter, .exit = demo_ble_exit,
-      .key = demo_ble_key, .start = demo_ble_start, .stop = demo_ble_stop },
-    { .name = "Low Power", .enter = demo_low_power_enter, .exit = demo_low_power_exit,
-      .key = demo_low_power_key, .start = demo_low_power_start, .stop = demo_low_power_stop },
+    { .name = "Settings", .enter = demo_settings_enter, .exit = demo_settings_exit,
+      .key = demo_settings_key },
+    { .name = "Exit", .enter = app_exit_enter, .exit = app_exit_exit,
+      .key = app_exit_key },
 };
-#define DEMO_COUNT (sizeof(DEMOS) / sizeof(DEMOS[0]))
+#define MENU_COUNT (sizeof(MENU) / sizeof(MENU[0]))
 #define INPUT_QUEUE_DEPTH 8
 
 typedef struct {
@@ -48,54 +41,172 @@ typedef struct {
     bsp_btn_ev_t event;
 } input_event_t;
 
-// 各外设初始化结果:失败的项在菜单里标 [FAIL] 且不允许进入。
-static bool s_ok[DEMO_COUNT];
-
-static lv_obj_t *s_menu_scr;
-static lv_obj_t *s_cards[DEMO_COUNT];
-static lv_obj_t *s_rows[DEMO_COUNT];
-static lv_obj_t *s_mascot;
+static bool s_ok[MENU_COUNT];
+static lv_obj_t *s_home_scr;
+static lv_obj_t *s_home_cards[MENU_COUNT];
+static lv_obj_t *s_home_rows[MENU_COUNT];
+static lv_obj_t *s_home_clock;
+static lv_obj_t *s_home_battery;
+static lv_obj_t *s_boot_scr;
+static lv_obj_t *s_exit_scr;
+static lv_timer_t *s_home_timer;
 static demo_navigation_t s_navigation;
 static QueueHandle_t s_input_queue;
 static TaskHandle_t s_input_task;
 static volatile bool s_input_ready;
+static int64_t s_clock_boot_us;
 
-static void menu_refresh(void) {
-    for (size_t i = 0; i < DEMO_COUNT; i++) {
-        lv_label_set_text_fmt(s_rows[i], "%s%s",
-                              DEMOS[i].name,
-                              s_ok[i] ? "" : "  [FAIL]");
-        ui_pixel_set_selected(s_cards[i], i == s_navigation.selected, s_ok[i]);
-        lv_obj_set_style_text_color(s_rows[i],
-            s_ok[i] ? lv_color_hex(UI_INK) : lv_color_hex(0x7A2020), 0);
+static uint8_t s_brightness = 100;
+static bool s_sound_enabled = true;
+static uint8_t s_pace = MEMORY_PACE_NORMAL;
+
+static lv_obj_t *s_settings_scr;
+static lv_obj_t *s_settings_cards[3];
+static lv_obj_t *s_settings_values[3];
+static lv_obj_t *s_settings_clock;
+static lv_obj_t *s_settings_battery;
+static lv_timer_t *s_settings_timer;
+static uint8_t s_settings_selected;
+
+static void set_status_labels(lv_obj_t *clock, lv_obj_t *battery);
+static void settings_refresh_locked(void);
+static void settings_refresh(void)
+{
+    if (!bsp_lvgl_lock(250)) return;
+    settings_refresh_locked();
+    bsp_lvgl_unlock();
+}
+static void settings_tick(lv_timer_t *timer)
+{
+    (void)timer;
+    set_status_labels(s_settings_clock, s_settings_battery);
+}
+
+void app_clock_text(char text[6])
+{
+    if (!text) return;
+
+    time_t wall_clock = time(NULL);
+    struct tm local = { 0 };
+    if (wall_clock >= 1700000000 && localtime_r(&wall_clock, &local)) {
+        snprintf(text, 6, "%02d:%02d", local.tm_hour, local.tm_min);
+        return;
+    }
+
+    /* No RTC/NTP service is configured yet: show elapsed device time, never a fake date. */
+    uint64_t elapsed = s_clock_boot_us > 0
+                     ? ((uint64_t)esp_timer_get_time() - (uint64_t)s_clock_boot_us) / 1000000U
+                     : 0;
+    const int minutes = (int)(elapsed / 60U) % (24 * 60);
+    snprintf(text, 6, "%02d:%02d", minutes / 60, minutes % 60);
+}
+
+static void set_status_labels(lv_obj_t *clock, lv_obj_t *battery)
+{
+    char clock_text[6];
+    app_clock_text(clock_text);
+    if (clock) lv_label_set_text(clock, clock_text);
+
+    if (!battery) return;
+    const int soc = bsp_battery_soc();
+    if (soc < 0) {
+        lv_label_set_text(battery, "--%");
+        lv_obj_set_style_text_color(battery, lv_color_hex(UI_MUTED), 0);
+    } else {
+        lv_label_set_text_fmt(battery, "%d%%", soc);
+        lv_obj_set_style_text_color(battery,
+                                    lv_color_hex(soc < 20 ? UI_RED : UI_PAPER), 0);
     }
 }
 
-static void menu_build(void) {
-    s_menu_scr = ui_pixel_screen_create("FoloToy");
+static void home_tick(lv_timer_t *timer)
+{
+    (void)timer;
+    set_status_labels(s_home_clock, s_home_battery);
+}
 
-    for (size_t i = 0; i < DEMO_COUNT; i++) {
-        int x = 11 + (int)(i % 2) * 112;
-        // Keep four menu rows above the mascot now that Memory adds an eighth demo.
-        int y = 50 + (int)(i / 2) * 42;
-        s_cards[i] = ui_pixel_panel_create(s_menu_scr, x, y, 102, 40, UI_PAPER);
-        s_rows[i] = lv_label_create(s_cards[i]);
-        lv_obj_set_style_text_font(s_rows[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_align(s_rows[i], LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_center(s_rows[i]);
+static void home_refresh(void)
+{
+    for (size_t i = 0; i < MENU_COUNT; i++) {
+        lv_label_set_text_fmt(s_home_rows[i], "%s", MENU[i].name);
+        ui_pixel_set_selected(s_home_cards[i], i == s_navigation.selected, s_ok[i]);
+    }
+}
+
+static void home_build(void)
+{
+    s_home_scr = ui_pixel_screen_create("MEMORY");
+    s_home_clock = ui_pixel_label(s_home_scr, "--:--", &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(s_home_clock, 158, 28);
+    lv_obj_set_width(s_home_clock, 44);
+    s_home_battery = ui_pixel_label(s_home_scr, "--%", &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(s_home_battery, 202, 28);
+    lv_obj_set_width(s_home_battery, 36);
+    lv_obj_set_style_text_align(s_home_battery, LV_TEXT_ALIGN_RIGHT, 0);
+
+    static const char *const names[MENU_COUNT] = { "Memory", "Settings", "Exit" };
+    static const char *const hints[MENU_COUNT] = { "START", "OPEN", "POWER" };
+    for (size_t i = 0; i < MENU_COUNT; i++) {
+        const bool primary = i == 0;
+        const int x = primary ? 12 : 156;
+        const int y = primary ? 78 : 78 + ((int)i - 1) * 62;
+        const int width = primary ? 136 : 72;
+        const int height = primary ? 106 : 48;
+        s_home_cards[i] = ui_pixel_panel_create(s_home_scr, x, y, width, height, UI_PAPER);
+        s_home_rows[i] = ui_pixel_label(s_home_cards[i], names[i],
+                                        primary ? &lv_font_montserrat_20 : &lv_font_montserrat_14,
+                                        UI_INK);
+        lv_obj_set_width(s_home_rows[i], width - 16);
+        lv_obj_set_style_text_align(s_home_rows[i], LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(s_home_rows[i], LV_ALIGN_TOP_MID, 0, primary ? 20 : 5);
+        lv_obj_t *hint = ui_pixel_label(s_home_cards[i], hints[i],
+                                        &lv_font_montserrat_14, UI_SKY_DARK);
+        lv_obj_set_width(hint, width - 16);
+        lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, primary ? -18 : -5);
     }
 
-    s_mascot = ui_pixel_mascot_create(s_menu_scr, 101, 242);
-
-    menu_refresh();
-    lv_screen_load(s_menu_scr);
+    ui_pixel_mascot_create(s_home_scr, 101, 238);
+    set_status_labels(s_home_clock, s_home_battery);
+    s_home_timer = lv_timer_create(home_tick, 1000, NULL);
+    home_refresh();
+    lv_screen_load(s_home_scr);
 }
 
-static void enter_menu(void) {
-    menu_build();
+static void home_delete(void)
+{
+    if (s_home_timer) {
+        lv_timer_delete(s_home_timer);
+        s_home_timer = NULL;
+    }
+    if (s_home_scr) lv_obj_delete(s_home_scr);
+    s_home_scr = s_home_clock = s_home_battery = NULL;
+    for (size_t i = 0; i < MENU_COUNT; i++)
+        s_home_cards[i] = s_home_rows[i] = NULL;
 }
 
-static demo_nav_input_t navigation_input(bsp_btn_t btn, bsp_btn_ev_t event) {
+static void home_load(void)
+{
+    home_build();
+}
+
+static void boot_build(void)
+{
+    s_boot_scr = ui_pixel_screen_create("MEMORY");
+    lv_obj_t *panel = ui_pixel_panel_create(s_boot_scr, 18, 76, 204, 126, UI_PAPER);
+    lv_obj_t *name = ui_pixel_label(panel, "MEMORY\nPASSPORT",
+                                    &lv_font_montserrat_20, UI_INK);
+    lv_obj_set_width(name, 180);
+    lv_obj_set_style_text_align(name, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(name, LV_ALIGN_TOP_MID, 0, 16);
+    lv_obj_t *ready = ui_pixel_label(panel, "READY", &lv_font_montserrat_14, UI_SKY_DARK);
+    lv_obj_align(ready, LV_ALIGN_BOTTOM_MID, 0, -16);
+    ui_pixel_mascot_create(s_boot_scr, 101, 238);
+    lv_screen_load(s_boot_scr);
+}
+
+static demo_nav_input_t navigation_input(bsp_btn_t btn, bsp_btn_ev_t event)
+{
     if (event == BSP_BTN_LONG && btn == BSP_BTN_OK) return DEMO_NAV_INPUT_OK_LONG;
     if (event != BSP_BTN_CLICK) return DEMO_NAV_INPUT_OTHER;
     if (btn == BSP_BTN_UP) return DEMO_NAV_INPUT_UP_CLICK;
@@ -104,68 +215,65 @@ static demo_nav_input_t navigation_input(bsp_btn_t btn, bsp_btn_ev_t event) {
     return DEMO_NAV_INPUT_OTHER;
 }
 
-static void process_input(const input_event_t *input) {
-    demo_nav_input_t nav_input = navigation_input(input->btn, input->event);
-
+static void process_input(const input_event_t *input)
+{
+    const demo_nav_input_t nav_input = navigation_input(input->btn, input->event);
     if (s_navigation.active >= 0) {
-        demo_nav_result_t result = demo_navigation_handle(&s_navigation, nav_input, true);
-        const demo_entry_t *demo = &DEMOS[result.index];
+        const demo_entry_t *active_demo = &MENU[s_navigation.active];
+        const demo_nav_result_t result = demo_navigation_handle(&s_navigation, nav_input, true);
         if (result.action == DEMO_NAV_ACTION_EXIT) {
-            esp_err_t e = demo->stop ? demo->stop() : ESP_OK;
-            if (e != ESP_OK) {
-                ESP_LOGE(TAG, "%s 页面停止失败: %s", demo->name, esp_err_to_name(e));
+            const esp_err_t error = active_demo->stop ? active_demo->stop() : ESP_OK;
+            if (error != ESP_OK) {
+                ESP_LOGE(TAG, "%s stop failed: %s", active_demo->name, esp_err_to_name(error));
                 return;
             }
             if (!bsp_lvgl_lock(500)) return;
-            demo->exit();
+            active_demo->exit();
             demo_navigation_complete_exit(&s_navigation);
-            enter_menu();
+            home_load();
             bsp_lvgl_unlock();
         } else if (result.action == DEMO_NAV_ACTION_FORWARD) {
-            demo->key(input->btn, input->event);
+            active_demo->key(input->btn, input->event);
         }
         return;
     }
 
     if (nav_input == DEMO_NAV_INPUT_OTHER || nav_input == DEMO_NAV_INPUT_OK_LONG) return;
     if (!bsp_lvgl_lock(500)) return;
-    demo_nav_result_t result = demo_navigation_handle(
+    const demo_nav_result_t result = demo_navigation_handle(
         &s_navigation, nav_input, s_ok[s_navigation.selected]);
     if (result.action == DEMO_NAV_ACTION_REFRESH) {
-        menu_refresh();
-        ui_pixel_mascot_jump(s_mascot);
+        home_refresh();
     } else if (result.action == DEMO_NAV_ACTION_ENTER) {
-        const demo_entry_t *demo = &DEMOS[result.index];
-        ui_pixel_mascot_jump(s_mascot);
-        lv_obj_delete(s_menu_scr);
-        s_menu_scr = NULL;
-        s_mascot = NULL;
+        const demo_entry_t *demo = &MENU[result.index];
+        home_delete();
         demo->enter();
         bsp_lvgl_unlock();
-
-        esp_err_t e = demo->start ? demo->start() : ESP_OK;
-        if (e != ESP_OK) {
-            ESP_LOGE(TAG, "%s 页面启动失败: %s", demo->name, esp_err_to_name(e));
+        if (demo->start) {
+            const esp_err_t error = demo->start();
+            if (error != ESP_OK)
+                ESP_LOGE(TAG, "%s start failed: %s", demo->name, esp_err_to_name(error));
         }
         return;
     }
     bsp_lvgl_unlock();
 }
 
-static void input_task(void *arg) {
+static void input_task(void *arg)
+{
     (void)arg;
     input_event_t input;
     for (;;) {
-        if (xQueueReceive(s_input_queue, &input, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(s_input_queue, &input, portMAX_DELAY) == pdTRUE)
             process_input(&input);
-        }
     }
 }
 
-static esp_err_t input_dispatch_init(void) {
+static esp_err_t input_dispatch_init(void)
+{
     s_input_queue = xQueueCreate(INPUT_QUEUE_DEPTH, sizeof(input_event_t));
     if (!s_input_queue) return ESP_ERR_NO_MEM;
-    if (xTaskCreate(input_task, "demo_input", 4096, NULL, 5, &s_input_task) != pdPASS) {
+    if (xTaskCreate(input_task, "app_input", 4096, NULL, 5, &s_input_task) != pdPASS) {
         vQueueDelete(s_input_queue);
         s_input_queue = NULL;
         return ESP_ERR_NO_MEM;
@@ -173,77 +281,163 @@ static esp_err_t input_dispatch_init(void) {
     return ESP_OK;
 }
 
-static void input_dispatch_deinit(void) {
-    s_input_ready = false;
-    if (s_input_task) {
-        vTaskDelete(s_input_task);
-        s_input_task = NULL;
-    }
-    if (s_input_queue) {
-        vQueueDelete(s_input_queue);
-        s_input_queue = NULL;
-    }
-}
-
-// button callbacks run on the shared esp_timer task; enqueue only and return immediately.
-static void on_key(bsp_btn_t btn, bsp_btn_ev_t ev, void *user) {
+static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user)
+{
     (void)user;
     if (!s_input_ready || !s_input_queue) return;
-    const input_event_t input = { .btn = btn, .event = ev };
+    const input_event_t input = { .btn = btn, .event = event };
     (void)xQueueSend(s_input_queue, &input, 0);
 }
 
-void app_main(void) {
-    ESP_LOGI(TAG, "FoloToy AI Passport BSP demo 启动");
-    esp_sleep_wakeup_cause_t wakeup = esp_sleep_get_wakeup_cause();
-    if (wakeup != ESP_SLEEP_WAKEUP_UNDEFINED) {
-        ESP_LOGI(TAG, "休眠唤醒原因: %d", wakeup);
+void demo_settings_enter(void)
+{
+    s_settings_selected = 0;
+    s_settings_scr = ui_pixel_screen_create("SETTINGS");
+    s_settings_clock = ui_pixel_label(s_settings_scr, "--:--", &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(s_settings_clock, 158, 28);
+    s_settings_battery = ui_pixel_label(s_settings_scr, "--%", &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(s_settings_battery, 202, 28);
+    lv_obj_set_width(s_settings_battery, 36);
+    lv_obj_set_style_text_align(s_settings_battery, LV_TEXT_ALIGN_RIGHT, 0);
+
+    static const char *const names[] = { "BRIGHTNESS", "SOUND", "PACE" };
+    for (int i = 0; i < 3; i++) {
+        s_settings_cards[i] = ui_pixel_panel_create(s_settings_scr, 20, 62 + i * 58,
+                                                     200, 44, UI_PAPER);
+        lv_obj_t *label = ui_pixel_label(s_settings_cards[i], names[i],
+                                         &lv_font_montserrat_14, UI_INK);
+        lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
+        s_settings_values[i] = ui_pixel_label(s_settings_cards[i], "",
+                                              &lv_font_montserrat_14, UI_SKY_DARK);
+        lv_obj_set_width(s_settings_values[i], 82);
+        lv_obj_set_style_text_align(s_settings_values[i], LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_align(s_settings_values[i], LV_ALIGN_RIGHT_MID, -10, 0);
     }
+    lv_obj_t *hint = ui_pixel_label(s_settings_scr, "UP/DOWN SELECT  OK CHANGE",
+                                    &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(hint, 18, 254);
+    s_settings_timer = lv_timer_create(settings_tick, 1000, NULL);
+    settings_refresh_locked();
+    lv_screen_load(s_settings_scr);
+}
+
+void demo_settings_exit(void)
+{
+    if (s_settings_timer) {
+        lv_timer_delete(s_settings_timer);
+        s_settings_timer = NULL;
+    }
+    if (s_settings_scr) lv_obj_delete(s_settings_scr);
+    s_settings_scr = s_settings_clock = s_settings_battery = NULL;
+    for (int i = 0; i < 3; i++) s_settings_cards[i] = s_settings_values[i] = NULL;
+}
+
+static void settings_refresh_locked(void)
+{
+    static const char *const pace_names[] = { "SLOW", "NORMAL", "FAST" };
+    lv_label_set_text_fmt(s_settings_values[0], "%u%%", (unsigned)s_brightness);
+    lv_label_set_text(s_settings_values[1], s_sound_enabled ? "ON" : "OFF");
+    lv_label_set_text(s_settings_values[2], pace_names[s_pace]);
+    for (int i = 0; i < 3; i++)
+        ui_pixel_set_selected(s_settings_cards[i], i == s_settings_selected, true);
+}
+
+void demo_settings_key(bsp_btn_t btn, bsp_btn_ev_t event)
+{
+    if (event != BSP_BTN_CLICK || !s_settings_scr) return;
+    if (btn == BSP_BTN_UP) {
+        s_settings_selected = (s_settings_selected + 2) % 3;
+    } else if (btn == BSP_BTN_DOWN) {
+        s_settings_selected = (s_settings_selected + 1) % 3;
+    } else if (btn == BSP_BTN_OK) {
+        static const uint8_t levels[] = { 25, 50, 75, 100 };
+        if (s_settings_selected == 0) {
+            size_t current = 0;
+            for (size_t i = 0; i < sizeof(levels); i++)
+                if (levels[i] == s_brightness) current = i;
+            s_brightness = levels[(current + 1) % (sizeof(levels) / sizeof(levels[0]))];
+            bsp_display_backlight(s_brightness);
+        } else if (s_settings_selected == 1) {
+            s_sound_enabled = !s_sound_enabled;
+        } else {
+            s_pace = (s_pace + 1) % MEMORY_PACE_COUNT;
+        }
+        demo_memory_configure(s_sound_enabled, s_pace);
+    } else {
+        return;
+    }
+    settings_refresh();
+}
+
+static void app_exit_enter(void)
+{
+    s_exit_scr = ui_pixel_screen_create("EXIT");
+    lv_obj_t *panel = ui_pixel_panel_create(s_exit_scr, 18, 76, 204, 126, UI_PAPER);
+    lv_obj_t *text = ui_pixel_label(panel, "SAFE TO POWER OFF\n\nUSE POWER KEY",
+                                    &lv_font_montserrat_14, UI_INK);
+    lv_obj_set_width(text, 180);
+    lv_obj_set_style_text_align(text, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(text, LV_ALIGN_TOP_MID, 0, 20);
+    ui_pixel_mascot_create(s_exit_scr, 101, 238);
+    lv_screen_load(s_exit_scr);
+}
+
+static void app_exit_exit(void)
+{
+    if (s_exit_scr) lv_obj_delete(s_exit_scr);
+    s_exit_scr = NULL;
+}
+
+static void app_exit_key(bsp_btn_t btn, bsp_btn_ev_t event)
+{
+    (void)btn;
+    (void)event;
+}
+
+void app_main(void)
+{
+    ESP_LOGI(TAG, "Memory Passport starting");
+    s_clock_boot_us = esp_timer_get_time();
 
     bsp_i2c_init();
-    bsp_i2c_scan();
-
-    // 屏幕是本 demo 的 UI 载体,失败就没有菜单可言 —— 打清楚日志后退出,
-    // 不做"串口菜单"降级(那会让本文件复杂一倍,违背参考示例的初衷)。
     if (bsp_display_init() != ESP_OK || !bsp_lvgl_init()) {
-        ESP_LOGE(TAG, "显示/LVGL 初始化失败,demo 无法继续。"
-                      "检查 SPI 接线(MOSI=%d SCLK=%d CS=%d DC=%d BL=%d)",
+        ESP_LOGE(TAG, "Display/LVGL initialization failed (MOSI=%d SCLK=%d CS=%d DC=%d BL=%d)",
                  BSP_LCD_MOSI, BSP_LCD_SCLK, BSP_LCD_CS, BSP_LCD_DC, BSP_LCD_BL);
         return;
     }
-    bsp_display_backlight(100);
+    bsp_display_backlight(s_brightness);
 
-    demo_navigation_init(&s_navigation, DEMO_COUNT);
-
-    // 其余外设单项失败不阻塞:菜单里标 [FAIL],其他项照常可测。
-    esp_err_t input_err = input_dispatch_init();
-    esp_err_t button_err = input_err == ESP_OK
-                         ? bsp_button_init(on_key, NULL)
-                         : ESP_ERR_INVALID_STATE;
-    const bool input_ok = input_err == ESP_OK && button_err == ESP_OK;
-    if (input_err != ESP_OK) {
-        ESP_LOGE(TAG, "按键事件任务创建失败: %s", esp_err_to_name(input_err));
-    } else if (button_err != ESP_OK) {
-        ESP_LOGE(TAG, "按键初始化失败: %s", esp_err_to_name(button_err));
-        input_dispatch_deinit();
+    const int64_t boot_screen_started_us = esp_timer_get_time();
+    if (bsp_lvgl_lock(1000)) {
+        boot_build();
+        bsp_lvgl_unlock();
     }
-    const bool audio_ok = bsp_audio_init() == ESP_OK;
-    const bool battery_ok = bsp_battery_init() == ESP_OK;
-    s_ok[0] = input_ok;                                // Memory:音频/NVS/电量均可降级
-    s_ok[1] = true;                                    // Display 已确认可用
-    s_ok[2] = input_ok;
-    s_ok[3] = audio_ok;
-    s_ok[4] = battery_ok;
-    s_ok[5] = true;                                    // 页面内按需初始化并显示错误
-    s_ok[6] = true;
-    s_ok[7] = true;
+
+    const esp_err_t input_error = input_dispatch_init();
+    const esp_err_t button_error = input_error == ESP_OK
+                                 ? bsp_button_init(on_key, NULL) : ESP_ERR_INVALID_STATE;
+    const bool input_ok = input_error == ESP_OK && button_error == ESP_OK;
+    const esp_err_t battery_error = bsp_battery_init();
+    const bool battery_ok = battery_error == ESP_OK;
+    demo_memory_configure(s_sound_enabled, s_pace);
+    demo_navigation_init(&s_navigation, MENU_COUNT);
+    s_ok[0] = input_ok;
+    s_ok[1] = input_ok;
+    s_ok[2] = true;
+
+    const int64_t boot_elapsed_ms =
+        (esp_timer_get_time() - boot_screen_started_us) / 1000;
+    if (boot_elapsed_ms < 900)
+        vTaskDelay(pdMS_TO_TICKS((uint32_t)(900 - boot_elapsed_ms)));
 
     if (bsp_lvgl_lock(1000)) {
-        enter_menu();
+        if (s_boot_scr) lv_obj_delete(s_boot_scr);
+        s_boot_scr = NULL;
+        home_load();
         bsp_lvgl_unlock();
         s_input_ready = true;
     }
 
-    ESP_LOGI(TAG, "就绪:Memory=%d Display=%d Button=%d Audio=%d Battery=%d",
-             s_ok[0], s_ok[1], s_ok[2], s_ok[3], s_ok[4]);
+    ESP_LOGI(TAG, "ready: memory=%d settings=%d exit=%d battery=%d",
+             s_ok[0], s_ok[1], s_ok[2], battery_ok);
 }

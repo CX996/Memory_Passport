@@ -7,11 +7,11 @@
 > Document type: standalone UI design plan
 > Product: FoloToy AI Passport
 > Target: offline MVP
-> Review status: implementation baseline
+> Review status: implemented baseline
 
 ## 1. Design decision
 
-Memory Passport is one play entry in the existing main menu. It has no settings layer or mode picker. The user only needs to understand one loop: watch and hear an `UP / DOWN / OK` sequence, then repeat it in the same order. The initial sequence length is 3; every fully correct round adds one item, up to 12. A wrong item or a per-item timeout ends the session. The stored best is the highest sequence length fully completed locally, not an online rank and not a medical or cognitive assessment.
+Memory Passport is a focused product shell with a boot splash, a three-item home menu (`Memory`, `Settings`, `Exit`), and one sequence-memory activity. The user only needs to understand one loop: watch and hear an `UP / DOWN / OK` sequence, then repeat it in the same order. The initial sequence length is 3; every fully correct round generates a fresh random sequence one item longer, up to 12. A wrong item or a per-item timeout ends the session. The stored best is the highest sequence length fully completed locally, not an online rank and not a medical or cognitive assessment.
 
 The first UI reuses the existing `ui_pixel` sky, grass, title plate, ink outline panels, and TV robot. On-device copy uses large ASCII labels, digits, arrows, and shapes. The current firmware enables Montserrat 14/20 but has no CJK glyphs; do not add a full Chinese font only for this page. Chinese prose belongs in this document and implementation comments, while the device uses short English labels.
 
@@ -26,15 +26,18 @@ The first UI reuses the existing `ui_pixel` sky, grass, title plate, ink outline
 | Audio | ES8311 playback is blocking and must be consumed by an audio worker task. The game remains fully usable when audio is unavailable. |
 | Battery | CW2017 is optional at runtime. When readable, show it in the clear sky below the top-right cloud; when the value is `-1`, hide it instead of drawing a fake number. |
 | Persistence | Use the existing NVS partition; add no partition. Store only `best_level` (0-12) and the minimum schema/version data needed for migration. |
-| Sequence | Generate the first token at session start and append one token after each successful round. Adjacent tokens should not repeat by default, making two neighboring cues easier to distinguish for older users. The random seed is not persisted. |
+| Sequence | Generate a complete length-3 sequence at session start. After success, generate a complete new sequence at the next length; do not inherit the previous order or prefix. Tokens are independent, so adjacent repeats are valid. The random seed is not persisted. |
+| Product shell | Show the boot splash once, then keep `Memory`, `Settings`, and `Exit` on the home screen. Give `Memory` the primary card and keep the two utility entries secondary. Settings expose brightness (25/50/75/100%), sound (on/off), and pace (slow/standard/fast); these values are runtime-only in this MVP. |
+| Status | Show `HH:MM` when the system clock is valid. Without an RTC/NTP source, show elapsed device time from `00:00`; show the CW2017 percentage when readable and `--%` when unavailable. |
 | Score terms | `level` is the sequence length currently being challenged; `clear_level` is the last fully completed length; `best_level = max(best_level, clear_level)`. |
 | Audience | Default pacing targets ordinary adults while remaining readable, audible, and recoverable for older users. Make no medical claim and do not present the score as a health measure. |
 
 ## 3. Information architecture
 
 ```text
-Main menu
-  └─ MEMORY
+Boot splash
+  └─ Home: MEMORY / SETTINGS / EXIT
+      └─ MEMORY
       └─ READY
           └─ OK click -> PLAYBACK (device shows the sequence)
               └─ Playback complete -> INPUT (user repeats it)
@@ -45,7 +48,7 @@ Main menu
           └─ Complete length 12 -> RESULT / MAX CLEAR
 ```
 
-The MVP has no separate score page: `BEST` remains visible in READY and RESULT, avoiding an extra navigation step. It also has no pause, answer replay, difficulty picker, or volume setting; those are later extensions.
+The MVP has no separate score page: `BEST` remains visible in READY and RESULT, avoiding an extra navigation step. Settings are intentionally limited to brightness, sound, and playback pace; there is no pause, answer replay, profile, or network flow.
 
 ## 4. Pages and states
 
@@ -56,7 +59,7 @@ The feature has one screen. A small state machine changes the same controls' cop
 | `READY` | `MEMORY`, `BEST n`, three-key legend, `OK START`, `HOLD OK BACK` | Entering the page, before a retry, or after a result | `OK CLICK` starts. `UP/DOWN CLICK` do not change settings and may give a light acknowledgement. `OK LONG` returns. No idle timeout. |
 | `PLAYBACK` | `LEVEL n/12`, `WATCH`, highlighted token, `i/n` progress | Start from READY or automatically after SUCCESS | Ignore ordinary keys so the user cannot race the playback; `OK LONG` still exits. Highlight each token for about 360 ms with about 160 ms separation. |
 | `INPUT` | `LEVEL n/12`, `YOUR TURN`, `i/n`, three large key cards, progress dots | Immediately after playback | Allow 5 seconds for each expected token. A correct key gives immediate feedback and advances; a wrong key ends the round. `OK LONG` exits; `DOUBLE` adds no input. |
-| `SUCCESS` | `GOOD`, `CLEAR n`, one short green panel flash, robot jump | All expected tokens are correct | Lock ordinary input for about 900 ms. If `n < 12`, append a token and enter PLAYBACK; if `n = 12`, enter MAX RESULT. |
+| `SUCCESS` | `GOOD`, `CLEAR n`, one short green panel flash, robot jump | All expected tokens are correct | Lock ordinary input for about 900 ms. If `n < 12`, regenerate a complete random sequence at the next length and enter PLAYBACK; if `n = 12`, enter MAX RESULT. |
 | `RESULT` | `WRONG` or `TIME UP`, `CLEAR n`, `BEST n`, `TRY AGAIN`, `HOLD OK BACK` | Wrong input, timeout, or max completion | `OK CLICK` starts a new session (show a 500 ms READY cue, then play length 3). `UP/DOWN CLICK` do not change the score. `OK LONG` returns. Keep the result on screen. |
 | `MAX RESULT` | `MAX CLEAR`, `12/12`, `BEST 12` | Full completion of length 12 | Same controls as RESULT; never create length 13. |
 
@@ -101,7 +104,7 @@ Coordinates are a baseline, not a requirement to copy every pixel. Keep control 
 
 | Region | READY | PLAYBACK | INPUT | RESULT |
 | --- | --- | --- | --- | --- |
-| Top | `BEST n` | `LEVEL n/12` + `WATCH` | `LEVEL n/12` + `YOUR TURN` | `CLEAR n` + `BEST n` |
+| Top | `BEST n` + clock/battery | `LEVEL n/12` + `WATCH` | `LEVEL n/12` + `YOUR TURN` | `CLEAR n` + `BEST n` |
 | Center | Static three-key legend | Only the current token is highlighted | Pressed card briefly highlighted | Reason word (`WRONG`/`TIME UP`) |
 | Bottom | `OK START` | `i/n` | `i/n` + progress dots | `TRY AGAIN` |
 | Mascot | Blink | Small jump at playback start | Small jump for each accepted input | One result action only |
@@ -155,7 +158,7 @@ The three key cards may use sky blue, orange, and yellow accents, but each must 
 | Event | Default treatment | Purpose |
 | --- | --- | --- |
 | Start | Hold READY for 500 ms, then highlight the first token | Give the user preparation time instead of an abrupt flash. |
-| One playback token | Highlight 360 ms, off/gap 160 ms | Separate neighboring cues; length 12 remains a short session. |
+| One playback token | Standard: highlight 360 ms, off/gap 160 ms; slow/fast are selectable in Settings | Separate neighboring cues without changing the generated sequence. |
 | User key | Invert card/white edge for 180-220 ms and fill one progress dot | Make accepted input clear without sound. |
 | Success | One green panel flash of about 180 ms plus the existing 110/140 ms jump; total hold about 900 ms | Reward clearly without glare. |
 | Error/timeout | One red-edge pulse of about 220 ms, then a still result page | Avoid rapid flicker; state the reason in words. |
@@ -197,7 +200,7 @@ Every failure message must include an understandable next action (continue watch
 
 - **Never rely on color alone.** Every state has a large `WATCH`, `YOUR TURN`, `GOOD`, `WRONG`, or `TIME UP` word; every key has text and a shape.
 - **Stable and predictable.** Keep the state word and key legend in the same locations. Avoid scrolling or sudden reflow. Show `OK START`, `TRY AGAIN`, and `HOLD OK BACK` explicitly.
-- **Enough response time.** Use a 5-second per-item timeout by default. Test the 360/160 ms playback rhythm on hardware and adjust timing constants only if needed; do not change the rules.
+- **Enough response time.** Use a 5-second per-item timeout by default. Test the standard 360/160 ms playback rhythm and the slow/fast settings on hardware; adjust timing constants only if needed and do not change the random-sequence rules.
 - **Visual fallback for hearing limits.** When audio is off or the speaker fails, highlight duration, progress dots, and copy still provide the complete flow. Never remove critical feedback in a silent mode.
 - **Audio fallback for vision limits.** Tones are cues, not the only code. Each token also has a distinct position, word, and shape.
 - **Avoid risky flicker.** Success and error use at most one short pulse; never repeat flashes above 3 Hz. If animation fails, retain a static result.
@@ -223,23 +226,25 @@ Treat a missing key as `best_level=0`. Request one write only in RESULT/MAX RESU
 - Button callbacks only enqueue into the existing input queue. A non-LVGL task must hold `bsp_lvgl_lock()` before changing controls.
 - Put audio and NVS work in worker tasks. Stop timers/tasks before deleting the page screen and clear object pointers.
 - Expected implementation pieces are `main/demo_memory.c` and a small `memory_model` independent of LVGL/ESP-IDF, registered through `demo.h`, `main/CMakeLists.txt`, and `main.c`.
+- `main/main.c` owns the boot splash, home menu, settings, status labels, and exit page.
 - Since `ui_pixel_screen_create()` already supplies the brand structure, do not introduce a second theme or generic page factory.
 
 ## 12. MVP scope
 
 ### Must ship
 
-- One `MEMORY` menu entry and one screen covering READY, PLAYBACK, INPUT, SUCCESS, and RESULT/MAX.
-- Three-value sequences starting at length 3, adding one per success, capped at 12; adjacent tokens should not repeat by default.
+- Boot splash, a home menu with `MEMORY`, `SETTINGS`, and `EXIT`, plus one memory screen covering READY, PLAYBACK, INPUT, SUCCESS, and RESULT/MAX.
+- Three-value sequences starting at length 3; each success regenerates a complete next-length sequence, capped at 12. Adjacent tokens may repeat.
 - Visual highlighting plus three distinguishable tones; complete visual fallback when audio fails.
+- Runtime brightness, sound, and slow/standard/fast pace controls; clock and battery status remain visible on the shell.
 - `PRESS`/`CLICK` deduplication, a 5-second per-item timeout, immediate failure on a wrong item, and global `OK LONG` back.
 - `BEST` persisted in NVS. NVS failure must not block the current session and must expose `SAVE OFF`/`NOT SAVED`.
 - Optional top-right battery display, low-battery hint, and the existing `ui_pixel` visual identity.
-- Pure-model host tests for sequence append, correct/wrong input, timeout, cap 12, score update, and storage boundaries.
+- Pure-model host tests for full-sequence regeneration, correct/wrong input, timeout, cap 12, score update, and storage boundaries.
 
 ### Explicitly out of scope
 
-- Pause, difficulty/speed settings, volume settings, profiles, daily goals, network sync, or leaderboards.
+- Pause, profiles, daily goals, network sync, or leaderboards. Settings persistence and manual clock editing are also deferred.
 - Answer replay, per-key review, voice input, touch, vibration, or new hardware interfaces.
 - A full CJK font, complex pixel illustrations, continuous background music, or per-frame telemetry.
 - Medical, educational-effect, or cognitive-ability claims.
@@ -248,14 +253,14 @@ Treat a missing key as `best_level=0`. Request one write only in RESULT/MAX RESU
 
 ### Host logic
 
-1. A length-3 sequence can be completed; each success appends exactly one token; no token is appended after length 12.
+1. A length-3 sequence can be completed; each success regenerates a complete next-length sequence without inheriting the previous prefix; no sequence is generated after length 12.
 2. A wrong token immediately enters RESULT; five seconds without input enters `TIME UP`; only a full completion updates `clear_level`.
 3. `best_level` is the maximum fully completed length, including 0 and 12 boundaries. Missing, corrupt, and failed NVS paths all degrade visibly.
 4. `PRESS + CLICK` from one physical action counts once; `DOUBLE` does not change the model; `OK LONG` leaves no token behind.
 
 ### Device
 
-1. On the 240 x 320 portrait screen, title, cloud, battery, panel, key cards, and dots do not overlap; partial updates do not tear.
+1. On the 240 x 320 portrait screen, splash, home cards, settings rows, title, cloud, clock, battery, panel, key cards, and dots do not overlap; partial updates do not tear.
 2. Holding each key confirms the ADC windows and short/long boundaries; rapid repeated input neither loses nor duplicates positions.
 3. In a quiet room and for users with hearing limits, the three tones are distinguishable; with audio disabled, the visual flow remains complete.
 4. After completing a new best and rebooting, `BEST` remains; simulated NVS errors do not erase other data.
@@ -263,7 +268,7 @@ Treat a missing key as `best_level=0`. Request one write only in RESULT/MAX RESU
 
 ## 14. Extension order
 
-1. **Low-risk experience:** slow/standard pacing, pause/resume, replay of the previous round, and explicit clear-best action; keep the three-key single-action model.
+1. **Low-risk experience:** pause/resume, replay of the previous round, explicit clear-best action, and persisted settings; keep the three-key single-action model.
 2. **Localization:** add a short CJK glyph subset or bitmap font only after RAM and refresh budgeting, then replace the ASCII labels.
 3. **Companion play:** daily goals, streaks, and more visual themes; never package statistics as health conclusions.
 4. **Connectivity:** BLE score sync or multiplayer with separate privacy, pairing, power, and offline-fallback design; do not make networking a prerequisite for the MVP.

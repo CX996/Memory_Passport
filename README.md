@@ -4,15 +4,19 @@
 
 # Memory Passport
 
-Memory Passport is an offline, three-button sequence memory game for the
-FoloToy AI Passport (ESP32-C3). Watch the `UP`, `DOWN`, and `OK` cues, then
-repeat them in order. Each cleared round adds one cue, from level 3 to 12.
+Memory Passport is an offline, three-button sequence memory tool for the
+FoloToy AI Passport (ESP32-C3). The product shell opens with a splash and a
+home screen for `Memory`, `Settings`, and `Exit`. Watch the `UP`, `DOWN`, and
+`OK` cues, then repeat them in order. Each cleared round generates a fresh
+random sequence one item longer, from level 3 to 12.
 
 ## MVP
 
 - Visual and audio cues with a visual-only fallback.
 - Five seconds for each expected input.
 - Local best score stored in NVS; gameplay continues if storage is unavailable.
+- Runtime brightness, sound, and slow/standard/fast pacing settings.
+- Clock and battery status on the product shell, with elapsed-time fallback when no valid system clock exists.
 - No account, network connection, leaderboard, or medical claim.
 
 Controls: press `OK` to start or retry, use `UP` / `DOWN` / `OK` to answer,

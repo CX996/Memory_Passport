@@ -1,8 +1,11 @@
-// main/demo.h —— 每个演示页实现的统一接口。
-// 新增演示页 = 实现 enter/exit/key，慢服务按需实现 start/stop，再注册到 DEMOS[]。
+// main/demo.h —— 每个产品页面实现的统一接口。
+// 新增页面 = 实现 enter/exit/key，慢服务按需实现 start/stop，再注册到 MENU[]。
 #pragma once
 
 #include "bsp_button.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
     const char *name;
@@ -17,28 +20,17 @@ typedef struct {
 void demo_memory_enter(void);  void demo_memory_exit(void);
 void demo_memory_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 esp_err_t demo_memory_start(void); esp_err_t demo_memory_stop(void);
+void demo_memory_configure(bool sound_enabled, uint8_t pace);
 
-void demo_display_enter(void); void demo_display_exit(void);
-void demo_display_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+enum {
+    MEMORY_PACE_SLOW = 0,
+    MEMORY_PACE_NORMAL,
+    MEMORY_PACE_FAST,
+    MEMORY_PACE_COUNT,
+};
 
-void demo_button_enter(void);  void demo_button_exit(void);
-void demo_button_key(bsp_btn_t btn, bsp_btn_ev_t ev);
+/* Shared product clock text; writes exactly "HH:MM" or "--:--" plus NUL. */
+void app_clock_text(char text[6]);
 
-void demo_audio_enter(void);   void demo_audio_exit(void);
-void demo_audio_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-esp_err_t demo_audio_start(void); esp_err_t demo_audio_stop(void);
-
-void demo_battery_enter(void); void demo_battery_exit(void);
-void demo_battery_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-
-void demo_wifi_enter(void);    void demo_wifi_exit(void);
-void demo_wifi_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-esp_err_t demo_wifi_start(void); esp_err_t demo_wifi_stop(void);
-
-void demo_ble_enter(void);     void demo_ble_exit(void);
-void demo_ble_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-esp_err_t demo_ble_start(void); esp_err_t demo_ble_stop(void);
-
-void demo_low_power_enter(void); void demo_low_power_exit(void);
-void demo_low_power_key(bsp_btn_t btn, bsp_btn_ev_t ev);
-esp_err_t demo_low_power_start(void); esp_err_t demo_low_power_stop(void);
+void demo_settings_enter(void); void demo_settings_exit(void);
+void demo_settings_key(bsp_btn_t btn, bsp_btn_ev_t ev);

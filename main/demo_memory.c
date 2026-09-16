@@ -5,10 +5,10 @@
 
 #include "bsp_audio.h"
 #include "bsp_battery.h"
-#include "bsp_display.h"
 #include "ui_pixel.h"
 
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -26,11 +26,10 @@ static const char *TAG = "demo_memory";
 #define MEMORY_STOP_TIMEOUT_MS 2000
 #define MEMORY_WORKER_POLL_MS 20
 #define MEMORY_READY_HOLD_MS 500
-#define MEMORY_PLAYBACK_ON_MS 360
-#define MEMORY_PLAYBACK_GAP_MS 160
 #define MEMORY_INPUT_FEEDBACK_MS 180
 #define MEMORY_RESULT_FEEDBACK_MS 220
 #define MEMORY_BATTERY_REFRESH_MS 5000
+#define MEMORY_CLOCK_REFRESH_MS 1000
 
 // Audio calibration knobs for the real speaker/codec path.
 #define MEMORY_AUDIO_RATE 16000
@@ -55,6 +54,7 @@ static lv_obj_t *s_best;
 static lv_obj_t *s_state;
 static lv_obj_t *s_prompt;
 static lv_obj_t *s_hint;
+static lv_obj_t *s_clock;
 static lv_obj_t *s_battery;
 static lv_obj_t *s_keys[MEMORY_TOKEN_COUNT];
 static lv_obj_t *s_progress[MEMORY_MAX_LEVEL];
@@ -69,6 +69,8 @@ static bool s_worker_ready;
 static bool s_sound_ok;
 static bool s_save_ok;
 static bool s_queue_drop_logged;
+static bool s_sound_enabled = true;
+static uint8_t s_pace = MEMORY_PACE_NORMAL;
 static int s_soc;
 
 static uint8_t s_playback_index;
@@ -77,12 +79,25 @@ static memory_token_t s_active_token;
 static uint64_t s_playback_due_ms;
 static uint64_t s_feedback_due_ms;
 static uint64_t s_battery_due_ms;
+static uint64_t s_clock_due_ms;
 static uint64_t s_input_refresh_due_ms;
 
 static uint32_t model_seed(void)
 {
     const uint64_t seed = (uint64_t)esp_timer_get_time();
-    return (uint32_t)seed ^ (uint32_t)(seed >> 32) ^ 0x9E3779B9U;
+    return esp_random() ^ (uint32_t)seed ^ (uint32_t)(seed >> 32) ^ 0x9E3779B9U;
+}
+
+static uint32_t playback_on_ms(void)
+{
+    static const uint16_t values[MEMORY_PACE_COUNT] = { 520, 360, 240 };
+    return values[s_pace < MEMORY_PACE_COUNT ? s_pace : MEMORY_PACE_NORMAL];
+}
+
+static uint32_t playback_gap_ms(void)
+{
+    static const uint16_t values[MEMORY_PACE_COUNT] = { 240, 160, 100 };
+    return values[s_pace < MEMORY_PACE_COUNT ? s_pace : MEMORY_PACE_NORMAL];
 }
 
 static bool token_is_valid(memory_token_t token)
@@ -140,6 +155,10 @@ static void render_locked(void)
 {
     if (!s_scr)
         return;
+
+    char clock_text[6];
+    app_clock_text(clock_text);
+    lv_label_set_text(s_clock, clock_text);
 
     if (!s_worker_ready) {
         lv_label_set_text(s_level, "READY");
@@ -432,7 +451,7 @@ static void advance_playback(uint64_t now)
         s_cue_on = false;
         s_active_token = MEMORY_TOKEN_INVALID;
         s_playback_index++;
-        s_playback_due_ms = now + MEMORY_PLAYBACK_GAP_MS;
+        s_playback_due_ms = now + playback_gap_ms();
         render_ui(false);
         return;
     }
@@ -447,7 +466,7 @@ static void advance_playback(uint64_t now)
 
     s_active_token = memory_model_sequence_at(&s_model, s_playback_index);
     s_cue_on = true;
-    s_playback_due_ms = now + MEMORY_PLAYBACK_ON_MS;
+    s_playback_due_ms = now + playback_on_ms();
     render_ui(false);
     play_token(s_active_token, 200);
 }
@@ -471,6 +490,11 @@ static void advance_timers(void)
         }
     }
 
+    if (s_clock_due_ms == 0 || now >= s_clock_due_ms) {
+        s_clock_due_ms = now + MEMORY_CLOCK_REFRESH_MS;
+        render_ui(false);
+    }
+
     if (s_model.state == MEMORY_STATE_PLAYBACK) {
         advance_playback(now);
         return;
@@ -490,7 +514,7 @@ static void advance_timers(void)
     if (s_model.state == MEMORY_STATE_SUCCESS) {
         const memory_event_t event = memory_model_tick(&s_model, now);
         if (event == MEMORY_EVENT_NEXT_ROUND) {
-            schedule_playback(now, MEMORY_PLAYBACK_GAP_MS);
+            schedule_playback(now, playback_gap_ms());
         } else if (event == MEMORY_EVENT_MAX_REACHED) {
             render_ui(true);
             save_best_if_needed();
@@ -507,13 +531,14 @@ static void memory_task(void *arg)
     s_save_ok = memory_store_load_best(&best_level) == ESP_OK;
     memory_model_init(&s_model, model_seed(), best_level);
 
-    s_sound_ok = bsp_audio_init() == ESP_OK &&
+    s_sound_ok = s_sound_enabled && bsp_audio_init() == ESP_OK &&
                  bsp_audio_set_format(MEMORY_AUDIO_RATE, 16, 1) == ESP_OK;
     if (s_sound_ok)
         bsp_audio_set_volume(MEMORY_AUDIO_VOLUME);
 
     s_soc = -1;
     s_battery_due_ms = 0;
+    s_clock_due_ms = 0;
     s_worker_ready = true;
     render_ui(false);
 
@@ -544,9 +569,14 @@ void demo_memory_enter(void)
     s_active_token = MEMORY_TOKEN_INVALID;
 
     s_scr = ui_pixel_screen_create("MEMORY");
+    s_clock = ui_pixel_label(s_scr, "--:--", &lv_font_montserrat_14, UI_PAPER);
+    lv_obj_set_pos(s_clock, 158, 28);
+    lv_obj_set_width(s_clock, 44);
+    lv_obj_set_style_text_align(s_clock, LV_TEXT_ALIGN_LEFT, 0);
+
     s_battery = ui_pixel_label(s_scr, "", &lv_font_montserrat_14, UI_PAPER);
-    lv_obj_set_pos(s_battery, 174, 28);
-    lv_obj_set_width(s_battery, 54);
+    lv_obj_set_pos(s_battery, 202, 28);
+    lv_obj_set_width(s_battery, 36);
     lv_obj_set_style_text_align(s_battery, LV_TEXT_ALIGN_RIGHT, 0);
 
     s_panel = ui_pixel_panel_create(s_scr, 12, 54, 216, 178, UI_PAPER);
@@ -682,11 +712,17 @@ void demo_memory_exit(void)
     if (s_scr)
         lv_obj_delete(s_scr);
     s_scr = s_panel = s_level = s_best = s_state = s_prompt = s_hint = NULL;
-    s_battery = s_mascot = NULL;
+    s_clock = s_battery = s_mascot = NULL;
     for (uint8_t i = 0; i < MEMORY_TOKEN_COUNT; i++)
         s_keys[i] = NULL;
     for (uint8_t i = 0; i < MEMORY_MAX_LEVEL; i++)
         s_progress[i] = NULL;
+}
+
+void demo_memory_configure(bool sound_enabled, uint8_t pace)
+{
+    s_sound_enabled = sound_enabled;
+    s_pace = pace < MEMORY_PACE_COUNT ? pace : MEMORY_PACE_NORMAL;
 }
 
 void demo_memory_key(bsp_btn_t btn, bsp_btn_ev_t event)

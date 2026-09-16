@@ -7,13 +7,14 @@
 > Document type: Product functional baseline
 > Target platform: FoloToy AI Passport (ESP32-C3, 240 x 320, three buttons, ES8311)
 > Target release: Offline MVP
-> Review status: Pre-implementation
+> Review status: implementation baseline
 
 ## 1. Product positioning
 
 Memory Passport is a short, offline sequence-memory training tool. The device plays a sequence of
 button cues, and the user reproduces the same sequence with the three physical buttons. Each fully
-correct round adds one item until the user makes a mistake or reaches the limit.
+correct round unlocks a fresh random sequence one item longer, until the user makes a mistake or
+reaches the limit.
 
 The product offers a small, repeatable cognitive-training activity. It is not a medical assessment.
 Scores describe performance on this device only and must not be presented as evidence of improved
@@ -33,6 +34,8 @@ first release into separate products.
   or unavailable.
 - The highest fully reproduced length survives a reboot.
 - The gameplay model can be verified by host tests without ESP-IDF or hardware.
+- The product shell has a boot splash, a focused home screen, a small settings page, and an explicit
+  exit page; the home screen keeps time and battery status visible.
 
 ### 2.2 Out of scope for the first release
 
@@ -47,10 +50,10 @@ first release into separate products.
 
 ```text
 Main menu
-  -> MEMORY ready screen
+  -> MEMORY ready screen (or Settings / Exit)
   -> Device plays the sequence
   -> User reproduces it
-       |- Complete and correct -> success feedback -> append one item -> play again
+       |- Complete and correct -> success feedback -> generate a new random sequence one item longer -> play again
        `- Wrong or timeout -> result screen -> retry or return
 ```
 
@@ -63,18 +66,20 @@ entry, complex setup, or phone connection is required during a round.
 
 - Three tokens map to `UP`, `DOWN`, and `OK`.
 - Every session starts at length 3.
-- After the current sequence is reproduced correctly, append one token for the next round.
+- After the current sequence is reproduced correctly, generate a complete new random sequence at
+  the next length. Do not inherit the previous round's order or prefix.
 - The first-release maximum is length 12. A complete length-12 round goes to the result state; no
   length-13 sequence is generated.
-- Use a pseudo-random generator. Adjacent tokens do not repeat in the MVP to make consecutive cues
-  easier to distinguish.
+- Use a session-local pseudo-random generator. Each token is independent; adjacent tokens may repeat
+  because that is a valid random result.
 - The seed is session-local and is not stored in NVS, so a reboot may produce a different sequence.
 
 ### 4.2 Device cues
 
 - Highlight the matching button and play a short, distinct tone for each token.
-- Initial timing is about 360 ms highlighted and 160 ms between tokens. Tune only the timing on real
-  hardware; do not change the rules during that calibration.
+- Standard timing is about 360 ms highlighted and 160 ms between tokens. The Settings page exposes
+  slow, standard, and fast pacing; tune these timing values on real hardware without changing the
+  sequence rules.
 - Ignore ordinary input while the device is playing, so a user cannot race the playback. `OK` long
   press still exits.
 - Enter the input state immediately after playback and show `YOUR TURN`.
@@ -147,11 +152,11 @@ Use the existing NVS partition and a namespace such as `memory`:
 ```text
 schema_version  uint8   Data format version
 best_level      uint8   0..12
-audio_enabled   bool    Optional, default true
 ```
 
-The first release promises only `best_level`. If an audio setting adds disproportionate scope, keep
-audio enabled and fall back automatically when playback fails instead of adding a settings system.
+The first release persists only `best_level`. Brightness, sound, and pace are runtime settings with
+safe defaults after reboot; persist them only when a product requirement justifies the extra NVS
+schema and migration surface. If sound is disabled or unavailable, the visual flow remains complete.
 
 ### 7.2 Write timing
 
@@ -185,8 +190,8 @@ full sequence and clock state.
 - Do not use color alone to identify a token. Show `UP`, `DOWN`, and `OK` text plus symbols.
 - Use stable, high-contrast status words: `WATCH`, `YOUR TURN`, `GOOD`, `WRONG`, `TIME UP`, and
   `TRY AGAIN`.
-- Give a generous default response interval. A slow mode can be added later without changing the
-  sequence rules.
+- Give a generous default response interval. The built-in slow pace changes cue timing only; it does
+  not change the random sequence rules.
 - Use at most one short success/error pulse; avoid high-frequency flashing or glaring continuous motion.
 - Do not claim treatment, memory improvement, or diagnosis in UI copy.
 - Keep training data local. Do not collect names, voice, location, or network identifiers.
@@ -200,6 +205,7 @@ The MVP needs no `components/bsp` change, new dependency, or new partition:
 | `main/memory_model.c/.h` | Pure sequence, state, input validation, and score logic |
 | `main/demo_memory.c` | Page lifecycle, input forwarding, and LVGL presentation |
 | `main/memory_store.c/.h` | NVS read/write and graceful failure (can start inside the demo) |
+| `main/main.c` | Boot splash, home menu, settings (brightness/sound/pace), clock/battery status, and exit page |
 | `tests/test_memory_model.c` | Hardware-independent model tests |
 
 Register the page through `main/demo.h`, `main/CMakeLists.txt`, and the `DEMOS[]` table in `main.c`.
@@ -217,10 +223,11 @@ Lifecycle rules remain mandatory:
 
 ### 11.1 Host logic
 
-- The initial sequence has length 3, and each success appends exactly one token.
+- The initial sequence has length 3, and each success regenerates a complete sequence at the next
+  length without inheriting the previous prefix.
 - Length 12 is the upper bound; length 13 is never generated.
 - Correct input, wrong input, timeout, empty input, and out-of-range input produce deterministic states.
-- The no-adjacent-repeat generation rule is testable with a fixed seed.
+- Repeated adjacent tokens are accepted as valid random output.
 - `PRESS + CLICK` counts once, `DOUBLE` changes nothing, and `OK LONG` leaves no token behind.
 - `best_level` is updated only by a fully cleared length, with correct 0 and 12 boundaries.
 - Duplicate completion events do not duplicate the score or write request.

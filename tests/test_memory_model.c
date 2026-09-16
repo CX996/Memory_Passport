@@ -8,8 +8,6 @@ static void assert_sequence_valid(const memory_model_t *model) {
     assert(model->sequence_len <= MEMORY_MAX_LEVEL);
     for (uint8_t i = 0; i < model->sequence_len; i++) {
         assert(memory_model_sequence_at(model, i) != MEMORY_TOKEN_INVALID);
-        if (i > 0)
-            assert(model->sequence[i] != model->sequence[i - 1]);
     }
 }
 
@@ -67,6 +65,9 @@ static void test_press_click_dedupe_and_click_fallback(void) {
     assert(memory_model_best_needs_save(&model));
 
     assert(memory_model_tick(&model, model.deadline_ms - 1U) == MEMORY_EVENT_NONE);
+    /* 下一关必须覆盖整段序列，而不是沿用旧序列前缀。 */
+    for (uint8_t i = 0; i < model.sequence_len; i++)
+        model.sequence[i] = MEMORY_TOKEN_INVALID;
     assert(memory_model_tick(&model, model.deadline_ms) == MEMORY_EVENT_NEXT_ROUND);
     assert(model.sequence_len == 4);
     assert_sequence_valid(&model);
@@ -82,6 +83,30 @@ static void test_press_click_dedupe_and_click_fallback(void) {
     assert(!memory_model_best_needs_save(&model));
     assert(memory_model_submit(&model, MEMORY_TOKEN_UP, MEMORY_INPUT_DOUBLE, 3000) ==
            MEMORY_EVENT_NONE);
+}
+
+static void test_each_round_is_fresh_random_sequence(void) {
+    memory_model_t model;
+    memory_model_init(&model, 12345, 0);
+    assert(memory_model_start(&model) == MEMORY_EVENT_STARTED);
+    assert(memory_model_playback_done(&model, 100) == MEMORY_EVENT_INPUT_READY);
+
+    uint8_t first[MEMORY_INITIAL_LEVEL];
+    for (uint8_t i = 0; i < MEMORY_INITIAL_LEVEL; i++)
+        first[i] = model.sequence[i];
+    for (uint8_t i = 0; i < MEMORY_INITIAL_LEVEL; i++)
+        assert(memory_model_submit(&model, (memory_token_t)first[i], MEMORY_INPUT_CLICK,
+                                   200U + i) == (i + 1U == MEMORY_INITIAL_LEVEL
+                                                     ? MEMORY_EVENT_ROUND_SUCCESS
+                                                     : MEMORY_EVENT_TOKEN_ACCEPTED));
+
+    /* 污染旧序列，确保下一关会完整重生成，而不是只补写新增尾项。 */
+    for (uint8_t i = 0; i < MEMORY_INITIAL_LEVEL; i++)
+        model.sequence[i] = MEMORY_TOKEN_INVALID;
+    assert(memory_model_tick(&model, model.deadline_ms) == MEMORY_EVENT_NEXT_ROUND);
+    assert(model.sequence_len == MEMORY_INITIAL_LEVEL + 1U);
+    for (uint8_t i = 0; i < MEMORY_INITIAL_LEVEL; i++)
+        assert(model.sequence[i] != MEMORY_TOKEN_INVALID);
 }
 
 static void test_ok_press_waits_for_click(void) {
@@ -164,6 +189,7 @@ static void test_maximum_is_12(void) {
 int main(void) {
     test_initial_state_and_generation();
     test_press_click_dedupe_and_click_fallback();
+    test_each_round_is_fresh_random_sequence();
     test_ok_press_waits_for_click();
     test_wrong_timeout_and_restart();
     test_maximum_is_12();

@@ -82,7 +82,7 @@ typedef struct {
 /* 初始化模型；persisted_best 超出 0..12 时按安全默认值 0 处理。 */
 void memory_model_init(memory_model_t *model, uint32_t seed, uint8_t persisted_best);
 
-/* 从 READY/RESULT/MAX_RESULT 开始新会话，生成长度 3 的序列并进入 PLAYBACK。 */
+/* 从 READY/RESULT/MAX_RESULT 开始新会话，随机生成长度 3 的序列并进入 PLAYBACK。 */
 memory_event_t memory_model_start(memory_model_t *model);
 
 /* 播放器完成当前序列后调用，进入 INPUT 并开启首个 token 的超时窗口。 */
