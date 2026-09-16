@@ -5,10 +5,11 @@
 
 #include "bsp_audio.h"
 #include "bsp_battery.h"
+#include "bsp_display.h"
 #include "ui_pixel.h"
 
 #include "esp_log.h"
-#include "esp_system.h"
+#include "esp_random.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"

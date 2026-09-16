@@ -97,8 +97,8 @@ void app_clock_text(char text[6])
     uint64_t elapsed = s_clock_boot_us > 0
                      ? ((uint64_t)esp_timer_get_time() - (uint64_t)s_clock_boot_us) / 1000000U
                      : 0;
-    const int minutes = (int)(elapsed / 60U) % (24 * 60);
-    snprintf(text, 6, "%02d:%02d", minutes / 60, minutes % 60);
+    const unsigned minutes = (unsigned)((elapsed / 60U) % (24U * 60U));
+    snprintf(text, 6, "%02u:%02u", minutes / 60U, minutes % 60U);
 }
 
 static void set_status_labels(lv_obj_t *clock, lv_obj_t *battery)
