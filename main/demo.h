@@ -20,17 +20,17 @@ typedef struct {
 void demo_memory_enter(void);  void demo_memory_exit(void);
 void demo_memory_key(bsp_btn_t btn, bsp_btn_ev_t ev);
 esp_err_t demo_memory_start(void); esp_err_t demo_memory_stop(void);
-void demo_memory_configure(bool sound_enabled, uint8_t pace);
+esp_err_t demo_memory_prepare(void);
+uint8_t demo_memory_best_level(void);
+bool demo_memory_score_persistent(void);
+void demo_memory_configure(bool sound_enabled, uint8_t difficulty);
 
 enum {
-    MEMORY_PACE_SLOW = 0,
-    MEMORY_PACE_NORMAL,
-    MEMORY_PACE_FAST,
-    MEMORY_PACE_COUNT,
+    MEMORY_DIFFICULTY_EASY = 0,
+    MEMORY_DIFFICULTY_NORMAL,
+    MEMORY_DIFFICULTY_CHALLENGE,
+    MEMORY_DIFFICULTY_COUNT,
 };
-
-/* Shared product clock text; writes exactly "HH:MM" or "--:--" plus NUL. */
-void app_clock_text(char text[6]);
 
 void demo_settings_enter(void); void demo_settings_exit(void);
 void demo_settings_key(bsp_btn_t btn, bsp_btn_ev_t ev);

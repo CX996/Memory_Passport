@@ -7,10 +7,14 @@
  * 记忆训练模型的固定产品边界。
  * 序列只使用三个 token，容量固定为 12，避免在 ESP32-C3 上引入动态内存。
  */
+#define MEMORY_EASY_START_LEVEL 2
 #define MEMORY_INITIAL_LEVEL 3
+#define MEMORY_CHALLENGE_START_LEVEL 4
 #define MEMORY_MAX_LEVEL 12
 #define MEMORY_TOKEN_COUNT 3
+#define MEMORY_EASY_INPUT_TIMEOUT_MS 7000
 #define MEMORY_INPUT_TIMEOUT_MS 5000
+#define MEMORY_CHALLENGE_INPUT_TIMEOUT_MS 4000
 #define MEMORY_PRESS_CLICK_DEDUPE_MS 1500
 #define MEMORY_SUCCESS_HOLD_MS 900
 
@@ -67,10 +71,12 @@ typedef struct {
     uint8_t clear_level;
     uint8_t best_level;
     uint8_t failed_at;
+    uint8_t start_level;
     memory_state_t state;
     memory_failure_t failure;
     uint64_t deadline_ms;
     uint32_t rng;
+    uint32_t input_timeout_ms;
     bool best_dirty;
 
     /* 仅用于把一次 PRESS 产生的配对 CLICK 丢弃，不跨会话持久化。 */
@@ -82,7 +88,11 @@ typedef struct {
 /* 初始化模型；persisted_best 超出 0..12 时按安全默认值 0 处理。 */
 void memory_model_init(memory_model_t *model, uint32_t seed, uint8_t persisted_best);
 
-/* 从 READY/RESULT/MAX_RESULT 开始新会话，随机生成长度 3 的序列并进入 PLAYBACK。 */
+/* 配置三档难度；非 2/7000、3/5000、4/4000 的组合回退到标准档。 */
+void memory_model_configure(memory_model_t *model, uint8_t start_level,
+                            uint32_t input_timeout_ms);
+
+/* 从 READY/RESULT/MAX_RESULT 开始新会话，按配置长度生成序列并进入 PLAYBACK。 */
 memory_event_t memory_model_start(memory_model_t *model);
 
 /* 播放器完成当前序列后调用，进入 INPUT 并开启首个 token 的超时窗口。 */

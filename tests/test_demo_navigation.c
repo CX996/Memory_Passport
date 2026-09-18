@@ -4,12 +4,12 @@
 
 int main(void) {
     demo_navigation_t navigation;
-    demo_navigation_init(&navigation, 3);
+    demo_navigation_init(&navigation, 5);
 
     demo_nav_result_t result = demo_navigation_handle(
         &navigation, DEMO_NAV_INPUT_UP_CLICK, true);
     assert(result.action == DEMO_NAV_ACTION_REFRESH);
-    assert(navigation.selected == 2);
+    assert(navigation.selected == 4);
 
     result = demo_navigation_handle(&navigation, DEMO_NAV_INPUT_OK_CLICK, false);
     assert(result.action == DEMO_NAV_ACTION_NONE);

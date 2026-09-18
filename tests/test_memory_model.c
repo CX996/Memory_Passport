@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 static void assert_sequence_valid(const memory_model_t *model) {
-    assert(model->sequence_len >= MEMORY_INITIAL_LEVEL);
+    assert(model->sequence_len >= MEMORY_EASY_START_LEVEL);
     assert(model->sequence_len <= MEMORY_MAX_LEVEL);
     for (uint8_t i = 0; i < model->sequence_len; i++) {
         assert(memory_model_sequence_at(model, i) != MEMORY_TOKEN_INVALID);
@@ -37,6 +37,41 @@ static void test_initial_state_and_generation(void) {
     assert(model.sequence_len == MEMORY_INITIAL_LEVEL);
     assert_sequence_valid(&model);
     assert(memory_model_expected_token(&model) == MEMORY_TOKEN_INVALID);
+}
+
+static void test_difficulty_configuration(void) {
+    static const struct {
+        uint8_t start_level;
+        uint32_t timeout_ms;
+    } cases[] = {
+        {MEMORY_EASY_START_LEVEL, MEMORY_EASY_INPUT_TIMEOUT_MS},
+        {MEMORY_INITIAL_LEVEL, MEMORY_INPUT_TIMEOUT_MS},
+        {MEMORY_CHALLENGE_START_LEVEL, MEMORY_CHALLENGE_INPUT_TIMEOUT_MS},
+    };
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        memory_model_t model;
+        memory_model_init(&model, 100U + (uint32_t)i, 0);
+        memory_model_configure(&model, cases[i].start_level, cases[i].timeout_ms);
+        assert(model.start_level == cases[i].start_level);
+        assert(model.input_timeout_ms == cases[i].timeout_ms);
+        assert(memory_model_start(&model) == MEMORY_EVENT_STARTED);
+        assert(model.sequence_len == cases[i].start_level);
+        assert_sequence_valid(&model);
+        assert(memory_model_playback_done(&model, 100) == MEMORY_EVENT_INPUT_READY);
+        assert(model.deadline_ms == 100U + cases[i].timeout_ms);
+        assert(memory_model_submit(&model, memory_model_expected_token(&model),
+                                   MEMORY_INPUT_CLICK, 200) == MEMORY_EVENT_TOKEN_ACCEPTED);
+        assert(model.deadline_ms == 200U + cases[i].timeout_ms);
+    }
+
+    memory_model_t fallback;
+    memory_model_init(&fallback, 200, 0);
+    memory_model_configure(&fallback, MEMORY_EASY_START_LEVEL, MEMORY_INPUT_TIMEOUT_MS);
+    assert(fallback.start_level == MEMORY_INITIAL_LEVEL);
+    assert(fallback.input_timeout_ms == MEMORY_INPUT_TIMEOUT_MS);
+    assert(memory_model_start(&fallback) == MEMORY_EVENT_STARTED);
+    assert(fallback.sequence_len == MEMORY_INITIAL_LEVEL);
 }
 
 static void test_press_click_dedupe_and_click_fallback(void) {
@@ -188,6 +223,7 @@ static void test_maximum_is_12(void) {
 
 int main(void) {
     test_initial_state_and_generation();
+    test_difficulty_configuration();
     test_press_click_dedupe_and_click_fallback();
     test_each_round_is_fresh_random_sequence();
     test_ok_press_waits_for_click();

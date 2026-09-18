@@ -53,9 +53,9 @@ static void generate_sequence(memory_model_t *model, uint8_t length) {
         model->sequence[i] = (uint8_t)next_token(model);
 }
 
-/* 开启新局并保留 best_level；新局从长度 3 的 PLAYBACK 开始。 */
+/* 开启新局并保留 best_level；新局从配置长度的 PLAYBACK 开始。 */
 static void reset_session(memory_model_t *model) {
-    generate_sequence(model, MEMORY_INITIAL_LEVEL);
+    generate_sequence(model, model->start_level);
     model->clear_level = 0;
     model->failed_at = 0;
     model->failure = MEMORY_FAILURE_NONE;
@@ -90,6 +90,22 @@ void memory_model_init(memory_model_t *model, uint32_t seed, uint8_t persisted_b
     model->best_level = persisted_best <= MEMORY_MAX_LEVEL ? persisted_best : 0;
     model->state = MEMORY_STATE_READY;
     model->press_token = MEMORY_TOKEN_INVALID;
+    memory_model_configure(model, MEMORY_INITIAL_LEVEL, MEMORY_INPUT_TIMEOUT_MS);
+}
+
+void memory_model_configure(memory_model_t *model, uint8_t start_level,
+                            uint32_t input_timeout_ms) {
+    if (!model)
+        return;
+
+    const bool valid =
+        (start_level == MEMORY_EASY_START_LEVEL &&
+         input_timeout_ms == MEMORY_EASY_INPUT_TIMEOUT_MS) ||
+        (start_level == MEMORY_INITIAL_LEVEL && input_timeout_ms == MEMORY_INPUT_TIMEOUT_MS) ||
+        (start_level == MEMORY_CHALLENGE_START_LEVEL &&
+         input_timeout_ms == MEMORY_CHALLENGE_INPUT_TIMEOUT_MS);
+    model->start_level = valid ? start_level : MEMORY_INITIAL_LEVEL;
+    model->input_timeout_ms = valid ? input_timeout_ms : MEMORY_INPUT_TIMEOUT_MS;
 }
 
 /* 非阻塞地从可重试状态开始一局；其他状态调用时返回 NONE。 */
@@ -111,7 +127,7 @@ memory_event_t memory_model_playback_done(memory_model_t *model, uint64_t now_ms
 
     model->state = MEMORY_STATE_INPUT;
     model->failure = MEMORY_FAILURE_NONE;
-    model->deadline_ms = now_ms + MEMORY_INPUT_TIMEOUT_MS;
+    model->deadline_ms = now_ms + model->input_timeout_ms;
     model->press_pending = false;
     model->press_token = MEMORY_TOKEN_INVALID;
     return MEMORY_EVENT_INPUT_READY;
@@ -165,7 +181,7 @@ memory_event_t memory_model_submit(memory_model_t *model, memory_token_t token,
         return finish_success(model, now_ms);
     }
 
-    model->deadline_ms = now_ms + MEMORY_INPUT_TIMEOUT_MS;
+    model->deadline_ms = now_ms + model->input_timeout_ms;
     return MEMORY_EVENT_TOKEN_ACCEPTED;
 }
 

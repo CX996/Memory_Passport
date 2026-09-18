@@ -1,5 +1,7 @@
 #include "ui_pixel.h"
 
+#include <stdint.h>
+
 static void start_blink(lv_obj_t *eye);
 
 static lv_obj_t *block(lv_obj_t *parent, int x, int y, int w, int h, uint32_t color)
@@ -41,7 +43,7 @@ lv_obj_t *ui_pixel_screen_create(const char *title)
     lv_obj_set_style_border_width(scr, 0, 0);
     lv_obj_set_style_pad_all(scr, 0, 0);
 
-    add_cloud(scr, 188, 8);
+    add_cloud(scr, 188, 34);
     block(scr, 0, 286, 240, 34, UI_GRASS);
     block(scr, 0, 286, 240, 4, 0xA7D93E);
     for (int x = 0; x < 240; x += 30) {
@@ -49,12 +51,12 @@ lv_obj_t *ui_pixel_screen_create(const char *title)
         block(scr, x + 18, 316, 12, 4, 0x75452E);
     }
 
-    block(scr, 9, 12, 151, 33, UI_INK);
-    lv_obj_t *plate = block(scr, 5, 8, 151, 33, UI_PAPER);
-    lv_obj_set_style_border_color(plate, lv_color_hex(UI_INK), 0);
-    lv_obj_set_style_border_width(plate, 3, 0);
-    lv_obj_t *heading = ui_pixel_label(plate, title, &lv_font_montserrat_20, UI_INK);
-    lv_obj_center(heading);
+    lv_obj_t *bar = block(scr, 0, 0, 240, 25, UI_PAPER);
+    block(scr, 0, 22, 240, 3, UI_INK);
+    lv_obj_t *heading = ui_pixel_label(bar, title, &ui_font_chinese_16, UI_INK);
+    lv_obj_set_pos(heading, 56, 3);
+    lv_obj_set_size(heading, 128, 18);
+    lv_obj_set_style_text_align(heading, LV_TEXT_ALIGN_CENTER, 0);
     return scr;
 }
 
@@ -78,6 +80,7 @@ lv_obj_t *ui_pixel_mascot_create(lv_obj_t *parent, int x, int y)
     lv_obj_set_style_bg_opa(m, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(m, 0, 0);
     lv_obj_set_style_pad_all(m, 0, 0);
+    lv_obj_set_user_data(m, (void *)(intptr_t)y);
 
     /* 原创“小电视机器人”：天线、发光屏幕脸、橙色围巾与履带脚。 */
     block(m, 18, 0, 3, 6, UI_INK);
@@ -128,8 +131,9 @@ static void start_blink(lv_obj_t *eye)
 void ui_pixel_mascot_jump(lv_obj_t *mascot)
 {
     if (!mascot) return;
-    int y = lv_obj_get_y(mascot);
+    const int y = (int)(intptr_t)lv_obj_get_user_data(mascot);
     lv_anim_delete(mascot, jump_y);
+    lv_obj_set_y(mascot, y);
     lv_anim_t anim;
     lv_anim_init(&anim);
     lv_anim_set_var(&anim, mascot);
@@ -143,8 +147,7 @@ void ui_pixel_mascot_jump(lv_obj_t *mascot)
 
 void ui_pixel_set_selected(lv_obj_t *panel, bool selected, bool enabled)
 {
-    uint32_t color = !enabled ? 0x78909C : (selected ? UI_YELLOW : UI_PAPER);
+    uint32_t color = !enabled ? 0x78909C : (selected ? UI_YELLOW : UI_CARD);
     lv_obj_set_style_bg_color(panel, lv_color_hex(color), 0);
-    lv_obj_set_style_border_color(panel,
-        lv_color_hex(selected ? 0xFFFFFF : UI_INK), 0);
+    lv_obj_set_style_border_color(panel, lv_color_hex(UI_INK), 0);
 }

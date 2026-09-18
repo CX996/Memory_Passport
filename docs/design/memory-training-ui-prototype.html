@@ -3,94 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Memory Passport - UI Prototype</title>
+  <title>记忆通行证 · 交互原型</title>
   <style>
     :root {
       --sky: #1689e8;
       --sky-dark: #0872c9;
       --ink: #17202a;
-      --paper: #f4f4ea;
+      --paper: #f8f5df;
       --grass: #82be2d;
       --grass-dark: #55951d;
       --yellow: #ffd928;
-      --orange: #ffb23e;
+      --orange: #ffad32;
       --red: #e43b2f;
-      --muted: #d9e7ec;
+      --violet: #7557d9;
       --night: #09131f;
-      --night-2: #101f2d;
     }
 
     * { box-sizing: border-box; }
-
     html { color-scheme: dark; }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      color: var(--paper);
+      margin: 0;
+      color: #f4f4ea;
       background:
-        radial-gradient(circle at 15% 0%, #183a56 0, transparent 32%),
-        radial-gradient(circle at 100% 20%, #102e47 0, transparent 30%),
+        radial-gradient(circle at 14% 0%, #183a56 0, transparent 34%),
+        radial-gradient(circle at 100% 18%, #102e47 0, transparent 30%),
         var(--night);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
     }
 
     button { font: inherit; }
+    [hidden] { display: none !important; }
 
     .wrap {
-      width: min(1160px, calc(100% - 36px));
+      width: min(1060px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 30px 0 54px;
+      padding: 28px 0 48px;
     }
 
     .topbar {
       display: flex;
-      align-items: flex-end;
+      align-items: end;
       justify-content: space-between;
       gap: 24px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
 
-    .eyebrow {
+    .eyebrow,
+    .card-kicker {
       margin: 0 0 8px;
       color: #84c9ff;
-      font: 700 12px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .16em;
-      text-transform: uppercase;
+      font: 800 12px/1.2 ui-monospace, "Microsoft YaHei", monospace;
+      letter-spacing: .12em;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(26px, 4vw, 42px);
+      font-size: clamp(28px, 4vw, 42px);
       line-height: 1;
       letter-spacing: -.04em;
     }
 
     .top-note {
-      max-width: 360px;
+      max-width: 370px;
       margin: 0;
       color: #a8bac8;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.65;
       text-align: right;
     }
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(300px, 390px) minmax(0, 1fr);
+      grid-template-columns: 330px minmax(0, 1fr);
       align-items: start;
-      gap: clamp(26px, 6vw, 76px);
+      gap: clamp(28px, 6vw, 72px);
     }
 
-    .stage {
-      display: grid;
-      justify-items: center;
-    }
+    .stage { display: grid; justify-items: center; }
 
     .device {
       position: relative;
-      width: min(370px, 86vw);
-      padding: 68px 40px 138px;
+      width: 320px;
+      padding: 58px 32px 112px;
       border: 2px solid #65727a;
       border-radius: 42px;
       background:
@@ -103,69 +99,124 @@
     .device::after {
       content: "";
       position: absolute;
-      width: 12px;
-      height: 12px;
+      top: 27px;
+      width: 11px;
+      height: 11px;
       border: 3px solid #89959b;
       border-radius: 50%;
       background: #29343a;
       box-shadow: inset 0 0 0 2px #141b20;
     }
 
-    .device::before { top: 28px; left: 24px; }
-    .device::after { top: 28px; right: 24px; }
+    .device::before { left: 22px; }
+    .device::after { right: 22px; }
 
     .lanyard {
       position: absolute;
-      top: 15px;
+      top: 14px;
       left: 50%;
-      width: 106px;
-      height: 32px;
+      width: 102px;
+      height: 31px;
       border: 7px solid #11191e;
       border-radius: 22px;
       transform: translateX(-50%);
       box-shadow: inset 0 0 0 2px #647078;
     }
 
-    .screw {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      border: 2px solid #9ba7ab;
-      border-radius: 50%;
-      background: #253138;
+    .screen-bezel {
+      width: 256px;
+      height: 336px;
+      padding: 8px;
+      border-radius: 13px;
+      background: #11181d;
+      box-shadow: inset 0 0 0 2px #35444c, 0 7px 0 #111;
     }
 
-    .screw.one { left: 20px; bottom: 104px; }
-    .screw.two { right: 20px; bottom: 104px; }
-
     .screen {
+      --screen-dim: 0;
       position: relative;
-      width: 100%;
-      aspect-ratio: 3 / 4;
+      width: 240px;
+      height: 320px;
       overflow: hidden;
-      border: 8px solid #11181d;
-      border-radius: 12px;
       background: var(--sky);
-      box-shadow: inset 0 0 0 2px #35444c, 0 7px 0 #111;
+      color: var(--ink);
       isolation: isolate;
     }
 
+    .screen::before,
     .screen::after {
       content: "";
       position: absolute;
       inset: 0;
-      z-index: 8;
+      z-index: 20;
       pointer-events: none;
-      box-shadow: inset 0 0 28px rgba(0,0,0,.14);
+    }
+
+    .screen::before { background: rgba(5, 14, 24, var(--screen-dim)); }
+    .screen::after { box-shadow: inset 0 0 24px rgba(0,0,0,.16); }
+
+    .status-bar {
+      position: absolute;
+      z-index: 8;
+      top: 0;
+      right: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: 48px 1fr 52px;
+      align-items: center;
+      height: 25px;
+      padding: 0 7px;
+      border-bottom: 3px solid var(--ink);
+      background: var(--paper);
+      color: var(--ink);
+      font: 900 10px/1 ui-monospace, "Microsoft YaHei", monospace;
+    }
+
+    .status-title {
+      overflow: hidden;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .battery {
+      display: flex;
+      align-items: center;
+      justify-content: end;
+      gap: 4px;
+    }
+
+    .battery-icon {
+      position: relative;
+      width: 17px;
+      height: 9px;
+      border: 2px solid var(--ink);
+    }
+
+    .battery-icon::before {
+      content: "";
+      position: absolute;
+      top: 1px;
+      right: -5px;
+      width: 3px;
+      height: 4px;
+      background: var(--ink);
+    }
+
+    .battery-icon::after {
+      content: "";
+      position: absolute;
+      inset: 1px 3px 1px 1px;
+      background: var(--grass-dark);
     }
 
     .cloud {
       position: absolute;
       z-index: 1;
-      top: 4%;
-      right: 4%;
-      width: 18%;
-      height: 3.3%;
+      top: 34px;
+      right: 9px;
+      width: 38px;
+      height: 8px;
       background: #fff;
       box-shadow: 3px 3px 0 var(--ink);
     }
@@ -178,184 +229,8 @@
       background: #fff;
     }
 
-    .cloud::before { left: 18%; width: 25%; height: 145%; }
-    .cloud::after { right: 17%; width: 22%; height: 125%; }
-
-    .title-plate {
-      position: absolute;
-      z-index: 3;
-      top: 2.5%;
-      left: 2%;
-      display: grid;
-      width: 63%;
-      height: 10.3%;
-      place-items: center;
-      border: 3px solid var(--ink);
-      background: var(--paper);
-      box-shadow: 5px 5px 0 var(--ink);
-      color: var(--ink);
-      font: 900 18px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .06em;
-    }
-
-    .battery {
-      position: absolute;
-      z-index: 4;
-      top: 10.4%;
-      right: 4%;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--paper);
-      font: 800 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      text-shadow: 2px 2px 0 var(--ink);
-    }
-
-    .battery-icon {
-      position: relative;
-      width: 18px;
-      height: 10px;
-      border: 2px solid var(--paper);
-      box-shadow: 2px 2px 0 var(--ink);
-    }
-
-    .battery-icon::before {
-      content: "";
-      position: absolute;
-      top: 2px;
-      right: -5px;
-      width: 3px;
-      height: 4px;
-      background: var(--paper);
-    }
-
-    .battery-icon::after {
-      content: "";
-      position: absolute;
-      inset: 2px 3px 2px 2px;
-      background: var(--grass);
-    }
-
-    .main-panel {
-      position: absolute;
-      z-index: 2;
-      top: 17%;
-      left: 5%;
-      width: 90%;
-      height: 56%;
-      padding: 5% 5% 4%;
-      border: 4px solid var(--ink);
-      background: var(--paper);
-      box-shadow: 5px 6px 0 var(--ink);
-      color: var(--ink);
-      transition: border-color .18s ease, background-color .18s ease;
-    }
-
-    .panel-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      color: #426176;
-      font: 900 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .04em;
-    }
-
-    .state-word {
-      margin-top: 6%;
-      color: var(--sky-dark);
-      font: 950 29px/.92 Impact, Haettenschweiler, "Arial Black", sans-serif;
-      letter-spacing: .035em;
-      text-align: center;
-      transition: color .18s ease, transform .18s ease;
-    }
-
-    .prompt {
-      min-height: 18px;
-      margin-top: 3%;
-      color: #486273;
-      font: 800 10px/1.15 ui-monospace, SFMono-Regular, Consolas, monospace;
-      text-align: center;
-      text-transform: uppercase;
-    }
-
-    .key-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5%;
-      margin-top: 7%;
-    }
-
-    .key-card {
-      min-width: 0;
-      min-height: 72px;
-      padding: 6px 2px 7px;
-      border: 3px solid var(--ink);
-      background: #e3eee9;
-      box-shadow: 4px 4px 0 var(--ink);
-      color: var(--ink);
-      cursor: pointer;
-      touch-action: manipulation;
-      transition: transform .12s ease, background-color .12s ease, border-color .12s ease, opacity .12s ease;
-    }
-
-    .key-card:hover { transform: translate(-1px, -1px); }
-    .key-card:focus-visible,
-    .action:focus-visible,
-    .preview-btn:focus-visible,
-    .switch input:focus-visible + .switch-ui { outline: 3px solid #fff; outline-offset: 3px; }
-
-    .key-card .key-name {
-      display: block;
-      font: 950 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .03em;
-    }
-
-    .key-card .key-symbol {
-      display: block;
-      margin-top: 6px;
-      font: 950 29px/.8 Arial, sans-serif;
-    }
-
-    .key-card[data-token="UP"] { background: #bfe5f8; }
-    .key-card[data-token="DOWN"] { background: #ffd18e; }
-    .key-card[data-token="OK"] { background: #ffe879; }
-    .key-card.is-active {
-      border-color: #fff;
-      background: var(--yellow) !important;
-      box-shadow: 0 0 0 3px var(--ink), 5px 5px 0 #fff;
-      transform: translate(-2px, -3px) scale(1.03);
-    }
-    .key-card.is-correct { background: var(--grass) !important; }
-    .key-card.is-wrong { background: var(--red) !important; color: #fff; }
-    .key-grid.is-muted .key-card { opacity: .42; filter: saturate(.55); }
-
-    .progress-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      min-height: 15px;
-      margin-top: 7%;
-    }
-
-    .dot {
-      width: 7px;
-      height: 7px;
-      border: 2px solid #668091;
-      background: transparent;
-    }
-
-    .dot.is-filled { border-color: var(--grass-dark); background: var(--grass); }
-    .dot.is-current { border-color: var(--ink); background: var(--yellow); transform: scale(1.25); }
-
-    .hint {
-      min-height: 12px;
-      margin-top: 4%;
-      color: #4d6979;
-      font: 900 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .04em;
-      text-align: center;
-    }
+    .cloud::before { left: 8px; width: 11px; height: 15px; }
+    .cloud::after { right: 7px; width: 10px; height: 12px; }
 
     .grass {
       position: absolute;
@@ -363,10 +238,10 @@
       right: 0;
       bottom: 0;
       left: 0;
-      height: 10.6%;
+      height: 34px;
       border-top: 4px solid #a7d93e;
       background:
-        repeating-linear-gradient(90deg, var(--grass-dark) 0 11%, transparent 11% 16%),
+        repeating-linear-gradient(90deg, var(--grass-dark) 0 14px, transparent 14px 20px),
         var(--grass);
     }
 
@@ -376,248 +251,541 @@
       right: 0;
       bottom: 0;
       left: 0;
-      height: 22%;
-      background: repeating-linear-gradient(90deg, #75452e 0 8%, transparent 8% 13%);
+      height: 8px;
+      background: repeating-linear-gradient(90deg, #75452e 0 11px, transparent 11px 17px);
     }
 
-    .mascot {
+    .page {
       position: absolute;
       z-index: 4;
-      bottom: 11.5%;
+      top: 32px;
+      right: 8px;
+      bottom: 13px;
+      left: 8px;
+    }
+
+    .page.is-game { bottom: 84px; }
+
+    .pixel-panel {
+      height: 100%;
+      padding: 11px 12px;
+      border: 4px solid var(--ink);
+      background: var(--paper);
+      box-shadow: 5px 6px 0 var(--ink);
+    }
+
+    .page-heading {
+      margin: 0;
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.1;
+      text-align: center;
+    }
+
+    .page-subtitle {
+      margin: 5px 0 0;
+      color: #486273;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .menu-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 10px 12px 11px;
+    }
+
+    .menu-list {
+      display: grid;
+      flex: 1;
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 9px;
+    }
+
+    .menu-item,
+    .choice-item,
+    .setting-item {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      border: 3px solid var(--ink);
+      background: #e8f2ec;
+      box-shadow: 3px 3px 0 var(--ink);
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .menu-item { font-size: 14px; }
+
+    .menu-item.is-selected,
+    .choice-item.is-selected,
+    .setting-item.is-selected {
+      background: var(--yellow);
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    .menu-item.is-selected::before,
+    .choice-item.is-selected::before,
+    .setting-item.is-selected::before {
+      content: "◆";
+      position: absolute;
+      left: 8px;
+      color: var(--red);
+      font-size: 9px;
+    }
+
+    .screen-note {
+      margin: 7px 0 0;
+      color: #4d6979;
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    .choice-list,
+    .setting-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    .choice-item {
+      grid-template-columns: 1fr auto;
+      place-items: center stretch;
+      min-height: 48px;
+      padding: 6px 10px 6px 25px;
+      font-size: 14px;
+    }
+
+    .choice-item small {
+      color: #486273;
+      font-size: 9px;
+      text-align: right;
+    }
+
+    .choice-item b { text-align: center; }
+
+    .choice-item .current-mark {
+      position: absolute;
+      top: 3px;
+      right: 4px;
+      padding: 2px 4px;
+      background: var(--sky-dark);
+      color: #fff;
+      font-size: 8px;
+    }
+
+    .setting-list { margin-top: 18px; }
+
+    .setting-item {
+      grid-template-columns: 1fr auto;
+      place-items: center stretch;
+      min-height: 55px;
+      padding: 8px 12px 8px 25px;
+      font-size: 13px;
+    }
+
+    .setting-value {
+      min-width: 54px;
+      padding: 5px 6px;
+      border: 2px solid var(--ink);
+      background: #fff;
+      color: var(--sky-dark);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .more-copy {
+      min-height: 52px;
+      margin-top: 12px;
+      padding: 8px;
+      border: 3px solid var(--ink);
+      background: #dff2ff;
+      color: #294b63;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .more-panel .choice-list { gap: 6px; margin-top: 9px; }
+    .more-panel .choice-item { grid-template-columns: 1fr; min-height: 35px; padding: 6px 25px; }
+    .more-panel .more-copy { min-height: 46px; margin-top: 8px; text-align: left; }
+
+    .game-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 12px;
+    }
+
+    .game-meta {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      left: 10px;
+      display: flex;
+      justify-content: space-between;
+      color: #426176;
+      font-size: 9px;
+      font-weight: 900;
+    }
+
+    .game-word {
+      margin-top: 8px;
+      color: var(--sky-dark);
+      font-size: 25px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .game-copy {
+      max-width: 176px;
+      margin: 9px 0 0;
+      color: #486273;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .game-hint {
+      min-height: 15px;
+      margin-top: 9px;
+      color: #8a5700;
+      font-size: 10px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .progress-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
+      width: 138px;
+      margin-top: 10px;
+    }
+
+    .progress-dot {
+      width: 8px;
+      height: 8px;
+      border: 2px solid #668091;
+      background: transparent;
+    }
+
+    .progress-dot.is-filled { border-color: var(--grass-dark); background: var(--grass); }
+    .progress-dot.is-current { border-color: var(--ink); background: var(--yellow); transform: scale(1.18); }
+
+    .game-panel.is-success { border-color: var(--grass-dark); background: #efffd4; }
+    .game-panel.is-success .game-word { color: var(--grass-dark); }
+    .game-panel.is-result { border-color: var(--red); background: #fff0e7; }
+    .game-panel.is-result .game-word { color: var(--red); }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .score-box {
+      padding: 7px 4px;
+      border: 3px solid var(--ink);
+      background: #fff;
+      font-size: 9px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .score-box strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--sky-dark);
+      font-size: 18px;
+    }
+
+    .game-dock {
+      position: absolute;
+      z-index: 6;
+      right: 8px;
+      bottom: 5px;
+      left: 8px;
+      height: 77px;
+    }
+
+    .key-tiles {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .key-tile {
+      display: grid;
+      place-items: center;
+      height: 38px;
+      border: 3px solid var(--ink);
+      background: #bfe5f8;
+      box-shadow: 3px 3px 0 var(--ink);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .key-tile[data-token="DOWN"] { background: #ffd18e; }
+    .key-tile[data-token="OK"] { background: #ffe879; }
+    .key-tile.is-active {
+      border-color: #fff;
+      background: var(--yellow);
+      box-shadow: 0 0 0 3px var(--ink), 4px 4px 0 #fff;
+      transform: translateY(-3px);
+    }
+
+    .robot {
+      position: absolute;
+      bottom: 34px;
       left: 50%;
-      width: 44px;
-      height: 55px;
+      width: 36px;
+      height: 44px;
       transform: translateX(-50%);
-      transition: transform .25s ease;
+      transition: left .2s steps(3, end);
       pointer-events: none;
     }
 
-    .mascot.jump { animation: jump .25s steps(2, end); }
-    .antenna { position: absolute; top: 0; left: 20px; width: 4px; height: 8px; background: var(--ink); }
+    .robot.is-jumping { animation: robot-jump .3s steps(2, end); }
+    .antenna { position: absolute; top: 0; left: 16px; width: 4px; height: 7px; background: var(--ink); }
     .antenna::after { content: ""; position: absolute; top: 0; left: -3px; width: 10px; height: 4px; background: var(--orange); }
-    .robot-head { position: absolute; top: 7px; left: 5px; width: 34px; height: 25px; border: 4px solid var(--ink); background: #b9f3ff; box-shadow: -5px 5px 0 #7557d9, 5px 5px 0 #7557d9; }
-    .robot-head::before, .robot-head::after { content: ""; position: absolute; top: 6px; width: 5px; height: 8px; background: #294b7a; }
-    .robot-head::before { left: 6px; }
-    .robot-head::after { right: 6px; }
-    .robot-body { position: absolute; top: 32px; left: 10px; width: 25px; height: 16px; border: 4px solid var(--ink); background: #7557d9; }
-    .robot-body::before { content: ""; position: absolute; top: -4px; left: 4px; width: 13px; height: 4px; background: var(--orange); }
-    .robot-feet::before, .robot-feet::after { content: ""; position: absolute; bottom: 0; width: 10px; height: 5px; background: var(--ink); }
-    .robot-feet::before { left: 9px; }
-    .robot-feet::after { right: 9px; }
+    .robot-head { position: absolute; top: 6px; left: 4px; width: 29px; height: 21px; border: 4px solid var(--ink); background: #b9f3ff; box-shadow: -4px 4px 0 var(--violet), 4px 4px 0 var(--violet); }
+    .robot-head::before,
+    .robot-head::after { content: ""; position: absolute; top: 5px; width: 4px; height: 6px; background: #294b7a; }
+    .robot-head::before { left: 5px; }
+    .robot-head::after { right: 5px; }
+    .robot-body { position: absolute; top: 27px; left: 8px; width: 21px; height: 13px; border: 4px solid var(--ink); background: var(--violet); }
+    .robot-body::before { content: ""; position: absolute; top: -4px; left: 3px; width: 11px; height: 4px; background: var(--orange); }
+    .robot-feet::before,
+    .robot-feet::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 4px; background: var(--ink); }
+    .robot-feet::before { left: 7px; }
+    .robot-feet::after { right: 7px; }
 
-    @keyframes jump {
+    @keyframes robot-jump {
       0%, 100% { transform: translateX(-50%) translateY(0); }
-      45% { transform: translateX(-50%) translateY(-6px); }
+      45% { transform: translateX(-50%) translateY(-10px); }
     }
+
+    .boot-panel,
+    .shutdown-panel {
+      display: grid;
+      place-content: center;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .passport-mark {
+      display: grid;
+      width: 70px;
+      height: 82px;
+      place-items: center;
+      border: 5px solid var(--ink);
+      background: var(--yellow);
+      box-shadow: 7px 7px 0 var(--ink);
+      color: var(--red);
+      font-size: 38px;
+      font-weight: 950;
+    }
+
+    .boot-title {
+      margin: 18px 0 0;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .loading-dots {
+      display: flex;
+      gap: 6px;
+      margin-top: 16px;
+    }
+
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      background: var(--sky-dark);
+      animation: blink 1s steps(2, end) infinite;
+    }
+
+    .loading-dots span:nth-child(2) { animation-delay: .2s; }
+    .loading-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 50% { opacity: .2; } }
+
+    .screen[data-page="shutdown"] { background: #17242d; }
+    .screen[data-page="shutdown"] .cloud,
+    .screen[data-page="shutdown"] .grass { display: none; }
 
     .device-base {
       position: absolute;
-      right: 40px;
-      bottom: 30px;
-      left: 40px;
+      right: 22px;
+      bottom: 16px;
+      left: 22px;
       height: 82px;
       border-top: 1px solid #4d5b62;
       background: #202a30;
     }
 
-    .device-base::before {
-      content: "OPEN WEARABLE AI PASSPORT";
+    .hardware-keys {
       position: absolute;
-      right: 0;
-      bottom: 14px;
-      left: 0;
-      color: #aab6ba;
-      font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .08em;
-      text-align: center;
+      z-index: 2;
+      top: 9px;
+      right: 8px;
+      left: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
     }
 
-    .speaker {
+    .hardware-key {
+      height: 43px;
+      border: 3px solid #0d1317;
+      border-radius: 8px;
+      background: linear-gradient(#62717a, #36434a);
+      box-shadow: 0 5px 0 #0c1215, inset 0 2px 0 rgba(255,255,255,.18);
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .hardware-key.is-active,
+    .hardware-key:active {
+      border-color: var(--yellow);
+      transform: translateY(4px);
+      box-shadow: 0 1px 0 #0c1215;
+    }
+
+    .hardware-key:focus-visible,
+    .action:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+
+    .brand-mark {
       position: absolute;
-      right: 17px;
-      bottom: 23px;
-      width: 28px;
-      height: 52px;
-      border: 4px solid #10181d;
-      border-radius: 16px;
-      background: repeating-linear-gradient(160deg, #4d5a60 0 3px, #1b252a 3px 7px);
+      right: 0;
+      bottom: 2px;
+      left: 0;
+      color: #aab6ba;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-align: center;
     }
 
     .stage-note {
-      margin: 18px 0 0;
+      margin: 17px 0 0;
       color: #8298a7;
-      font: 700 11px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.5;
       text-align: center;
     }
 
-    .inspector {
-      min-width: 0;
-      padding-top: 6px;
-    }
+    .inspector { min-width: 0; padding-top: 4px; }
 
     .inspector-card {
-      padding: 22px;
+      padding: 21px;
       border: 1px solid #284559;
       border-radius: 18px;
       background: rgba(16,31,45,.84);
       box-shadow: 0 16px 35px rgba(0,0,0,.2);
     }
 
-    .inspector-card + .inspector-card { margin-top: 16px; }
-
-    .card-kicker {
-      margin: 0 0 8px;
-      color: #7fc8ff;
-      font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 21px;
-      letter-spacing: -.02em;
-    }
+    .inspector-card + .inspector-card { margin-top: 15px; }
+    .inspector h2 { margin: 0; font-size: 20px; }
 
     .card-copy {
       margin: 10px 0 0;
       color: #a9bdca;
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
-    .action-row,
-    .preview-row {
+    .action-row {
       display: flex;
       flex-wrap: wrap;
       gap: 9px;
-      margin-top: 18px;
+      margin-top: 16px;
     }
 
-    .action,
-    .preview-btn {
+    .action {
+      padding: 9px 13px;
       border: 2px solid #7eafcb;
       border-radius: 9px;
       background: #173348;
-      color: var(--paper);
+      color: #f4f4ea;
       cursor: pointer;
       font-weight: 800;
-      transition: background-color .12s ease, transform .12s ease, border-color .12s ease;
     }
 
-    .action { padding: 10px 15px; }
-    .preview-btn { padding: 8px 11px; font: 800 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
-    .action:hover, .preview-btn:hover { border-color: #fff; background: #24516f; transform: translateY(-1px); }
+    .action:hover { border-color: #fff; background: #24516f; }
     .action.primary { border-color: var(--yellow); background: #5c4d12; color: #fff7bc; }
-    .action.danger { border-color: #ff8278; background: #50211e; }
-
-    .control-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid #284559;
-    }
-
-    .switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      color: #c6d5dc;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .switch input { position: absolute; opacity: 0; pointer-events: none; }
-
-    .switch-ui {
-      position: relative;
-      width: 35px;
-      height: 20px;
-      border: 2px solid #607b8d;
-      border-radius: 12px;
-      background: #172b3b;
-    }
-
-    .switch-ui::after {
-      content: "";
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #8da4b1;
-      transition: transform .15s ease, background-color .15s ease;
-    }
-
-    .switch input:checked + .switch-ui::after { transform: translateX(15px); background: var(--yellow); }
 
     .keymap {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      margin-top: 16px;
+      margin-top: 15px;
     }
 
     .keymap-item {
-      padding: 12px 8px;
+      padding: 12px 7px;
       border: 1px solid #31546b;
       border-radius: 10px;
       background: #11283b;
       text-align: center;
     }
 
-    .keymap-item b { display: block; color: var(--paper); font-size: 13px; }
-    .keymap-item span { display: block; margin-top: 4px; color: #8fb8ce; font: 700 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .keymap-item b { display: block; font-size: 13px; }
+    .keymap-item span { display: block; margin-top: 4px; color: #8fb8ce; font-size: 11px; }
 
-    .status-line {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 16px;
-      color: #9fb8c7;
-      font: 700 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
-    }
-
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--grass); box-shadow: 0 0 12px var(--grass); }
-
-    .token-legend {
+    .coverage {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 16px;
+      gap: 8px;
       margin-top: 14px;
-      color: #9eb7c5;
-      font: 700 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
     }
 
-    .token-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--yellow); }
-    .token-legend span:nth-child(2)::before { background: var(--orange); }
-    .token-legend span:nth-child(3)::before { background: #9bdcff; }
-
-    .screen[data-state="success"] .main-panel { border-color: var(--grass-dark); }
-    .screen[data-state="success"] .state-word { color: var(--grass-dark); transform: scale(1.04); }
-    .screen[data-state="result"] .main-panel,
-    .screen[data-state="max"] .main-panel { border-color: var(--red); }
-    .screen[data-state="result"] .state-word,
-    .screen[data-state="max"] .state-word { color: var(--red); }
-    .screen[data-state="playback"] .state-word { color: var(--sky-dark); }
-    .screen[data-state="input"] .state-word { color: #b26b00; }
+    .coverage span {
+      padding: 6px 9px;
+      border: 1px solid #31546b;
+      border-radius: 999px;
+      background: #11283b;
+      color: #b9d4e2;
+      font-size: 11px;
+    }
 
     .toast {
       position: fixed;
-      right: 22px;
-      bottom: 22px;
-      z-index: 20;
-      max-width: min(360px, calc(100vw - 44px));
-      padding: 12px 15px;
+      z-index: 30;
+      right: 20px;
+      bottom: 20px;
+      max-width: min(340px, calc(100vw - 40px));
+      padding: 11px 14px;
       border: 2px solid var(--yellow);
-      border-radius: 10px;
+      border-radius: 9px;
       background: #302a0b;
       color: #fff4a7;
-      font: 800 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 800;
       opacity: 0;
       transform: translateY(10px);
       pointer-events: none;
@@ -629,9 +797,8 @@
     @media (max-width: 760px) {
       .wrap { width: min(100% - 24px, 520px); padding-top: 20px; }
       .topbar { display: block; }
-      .top-note { margin-top: 12px; text-align: left; }
-      .layout { grid-template-columns: 1fr; gap: 26px; }
-      .device { width: min(340px, 88vw); }
+      .top-note { margin-top: 11px; text-align: left; }
+      .layout { grid-template-columns: 1fr; gap: 25px; }
       .inspector { padding-top: 0; }
     }
 
@@ -644,175 +811,175 @@
   <main class="wrap">
     <header class="topbar">
       <div>
-        <p class="eyebrow">FoloToy AI Passport · design preview</p>
-        <h1>Memory Passport</h1>
+        <p class="eyebrow">可穿戴设备界面预览</p>
+        <h1>记忆通行证</h1>
       </div>
-      <p class="top-note">240 × 320 memory-screen prototype<br>Shell: splash · home · settings · exit</p>
+      <p class="top-note">屏幕基准为 240 × 320 竖屏<br>使用设备下方三枚按键体验完整流程</p>
     </header>
 
     <div class="layout">
-      <section class="stage" aria-label="AI Passport device preview">
+      <section class="stage" aria-label="记忆通行证设备预览">
         <div class="device">
           <div class="lanyard" aria-hidden="true"></div>
-          <span class="screw one" aria-hidden="true"></span>
-          <span class="screw two" aria-hidden="true"></span>
-          <div class="screen" id="screen" data-state="ready">
-            <div class="cloud" aria-hidden="true"></div>
-            <div class="title-plate">MEMORY</div>
-            <div class="battery" aria-label="Battery 85 percent">
-              <span class="battery-icon" aria-hidden="true"></span>
-              <span id="batteryText">85%</span>
-            </div>
+          <div class="screen-bezel">
+            <div class="screen" id="screen" data-page="boot">
+              <header class="status-bar">
+                <span aria-hidden="true"></span>
+                <span class="status-title" id="statusTitle">记忆通行证</span>
+                <span class="battery" aria-label="电量百分之八十五">
+                  <span class="battery-icon" aria-hidden="true"></span>
+                  <span>85%</span>
+                </span>
+              </header>
+              <div class="cloud" aria-hidden="true"></div>
+              <div class="page" id="page" aria-live="polite"></div>
 
-            <div class="main-panel">
-              <div class="panel-top">
-                <span id="levelText">READY</span>
-                <span id="bestText">BEST 7</span>
+              <div class="game-dock" id="gameDock" aria-label="游戏三键提示" hidden>
+                <div class="robot" id="robot" aria-hidden="true">
+                  <span class="antenna"></span>
+                  <span class="robot-head"></span>
+                  <span class="robot-body"></span>
+                  <span class="robot-feet"></span>
+                </div>
+                <div class="key-tiles">
+                  <div class="key-tile" data-token="UP">上 ↑</div>
+                  <div class="key-tile" data-token="DOWN">下 ↓</div>
+                  <div class="key-tile" data-token="OK">确定 ●</div>
+                </div>
               </div>
-              <div class="state-word" id="stateWord" aria-live="polite">READY</div>
-              <div class="prompt" id="prompt">Press OK to begin</div>
-
-              <div class="key-grid" id="keyGrid" aria-label="Three physical keys">
-                <button class="key-card" type="button" data-token="UP" aria-label="UP key">
-                  <span class="key-name">UP</span><span class="key-symbol">↑</span>
-                </button>
-                <button class="key-card" type="button" data-token="DOWN" aria-label="DOWN key">
-                  <span class="key-name">DOWN</span><span class="key-symbol">↓</span>
-                </button>
-                <button class="key-card" type="button" data-token="OK" aria-label="OK key">
-                  <span class="key-name">OK</span><span class="key-symbol">●</span>
-                </button>
-              </div>
-
-              <div class="progress-row" id="progressRow" aria-label="Sequence progress"></div>
-              <div class="hint" id="hint">OK START · HOLD OK BACK</div>
+              <div class="grass" aria-hidden="true"></div>
             </div>
-
-            <div class="mascot" id="mascot" aria-hidden="true">
-              <span class="antenna"></span>
-              <span class="robot-head"></span>
-              <span class="robot-body"></span>
-              <span class="robot-feet"></span>
-            </div>
-            <div class="grass" aria-hidden="true"></div>
           </div>
-          <div class="device-base" aria-hidden="true"></div>
-          <div class="speaker" aria-hidden="true"></div>
+
+          <div class="device-base">
+            <div class="hardware-keys" aria-label="设备实体按键">
+              <button class="hardware-key" type="button" data-token="UP" aria-label="上键">上 ↑</button>
+              <button class="hardware-key" type="button" data-token="DOWN" aria-label="下键">下 ↓</button>
+              <button class="hardware-key" type="button" data-token="OK" aria-label="确定键">确定 ●</button>
+            </div>
+            <div class="brand-mark">记忆通行证</div>
+          </div>
         </div>
-        <p class="stage-note">当前状态：<span id="outsideStatus">READY · click OK or press Enter</span></p>
+        <p class="stage-note">当前页面：<span id="outsideStatus">开机</span></p>
       </section>
 
-      <aside class="inspector" aria-label="Prototype controls and notes">
+      <aside class="inspector" aria-label="原型操作说明">
         <section class="inspector-card">
-          <p class="card-kicker">Interactive prototype</p>
-          <h2>按设备一样试一局</h2>
-          <p class="card-copy">这里预览记忆训练 screen；设备外壳另有 splash、home、settings、exit 页面。点击屏幕上的三枚键，或使用键盘 <b>↑</b>、<b>↓</b>、<b>Enter</b>。播放阶段会自动高亮序列；进入 YOUR TURN 后按相同顺序复现。</p>
+          <p class="card-kicker">交互说明</p>
+          <h2>像实体设备一样操作</h2>
+          <p class="card-copy">点击设备下方的“上、下、确定”，或使用键盘方向键与回车键。短按确定进入，长按确定返回主菜单。</p>
           <div class="action-row">
-            <button class="action primary" id="startButton" type="button">▶ Start demo</button>
-            <button class="action" id="backButton" type="button">Back / reset view</button>
-          </div>
-          <div class="control-line">
-            <label class="switch"><input id="soundToggle" type="checkbox" checked><span class="switch-ui"></span>browser tones</label>
-            <label class="switch"><input id="batteryToggle" type="checkbox" checked><span class="switch-ui"></span>battery</label>
-          </div>
-          <div class="status-line"><span class="status-dot" aria-hidden="true"></span><span id="eventStatus">READY · waiting for OK</span></div>
-        </section>
-
-        <section class="inspector-card">
-          <p class="card-kicker">State previews</p>
-          <h2>快速查看关键画面</h2>
-          <p class="card-copy">这些按钮只切换展示状态，不改变固件；适合评审信息层级、字号和色彩。</p>
-          <div class="preview-row">
-            <button class="preview-btn" type="button" data-preview="ready">READY</button>
-            <button class="preview-btn" type="button" data-preview="playback">PLAYBACK</button>
-            <button class="preview-btn" type="button" data-preview="input">YOUR TURN</button>
-            <button class="preview-btn" type="button" data-preview="result">RESULT</button>
-            <button class="preview-btn" type="button" data-preview="max">MAX CLEAR</button>
+            <button class="action primary" id="restartButton" type="button">重新开机</button>
+            <button class="action" id="menuButton" type="button">回到主菜单</button>
           </div>
         </section>
 
         <section class="inspector-card">
-          <p class="card-kicker">Interaction contract</p>
-          <h2>一眼看懂三键</h2>
+          <p class="card-kicker">三键对应</p>
+          <h2>按键与画面一一对应</h2>
           <div class="keymap">
-            <div class="keymap-item"><b>↑ UP</b><span>token 1</span></div>
-            <div class="keymap-item"><b>↓ DOWN</b><span>token 2</span></div>
-            <div class="keymap-item"><b>● OK</b><span>start / token 3</span></div>
+            <div class="keymap-item"><b>↑ 上</b><span>向上选择</span></div>
+            <div class="keymap-item"><b>↓ 下</b><span>向下选择</span></div>
+            <div class="keymap-item"><b>● 确定</b><span>进入或确认</span></div>
           </div>
-          <div class="token-legend"><span>visual cue</span><span>tone cue</span><span>no color-only meaning</span></div>
-          <p class="card-copy">长按 OK 在原型中回到 READY；结果页显示 <b>TRY AGAIN</b>，音频关闭时视觉流程仍完整。</p>
+          <p class="card-copy">游戏中每次按键都会让机器人移动到同名方块并跳起；播放提示时，机器人也会跟随当前提示移动。</p>
+        </section>
+
+        <section class="inspector-card">
+          <p class="card-kicker">页面范围</p>
+          <h2>本次原型已覆盖</h2>
+          <div class="coverage" aria-label="原型页面列表">
+            <span>开机</span><span>主菜单</span><span>难度选择</span><span>游戏准备</span>
+            <span>播放提示</span><span>顺序复现</span><span>游戏结果</span><span>基础设置</span>
+            <span>更多功能</span><span>退出</span>
+          </div>
+          <p class="card-copy">每轮序列都会完整重新随机生成；“更多功能”只保留玩法、记录和版本信息，不放入硬件测试入口。</p>
         </section>
       </aside>
     </div>
   </main>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     (() => {
       const $ = (selector) => document.querySelector(selector);
       const screen = $("#screen");
-      const stateWord = $("#stateWord");
-      const prompt = $("#prompt");
-      const levelText = $("#levelText");
-      const bestText = $("#bestText");
-      const hint = $("#hint");
-      const keyGrid = $("#keyGrid");
-      const cards = [...document.querySelectorAll(".key-card")];
-      const progressRow = $("#progressRow");
-      const mascot = $("#mascot");
-      const toast = $("#toast");
+      const pageNode = $("#page");
+      const gameDock = $("#gameDock");
+      const robot = $("#robot");
+      const statusTitle = $("#statusTitle");
       const outsideStatus = $("#outsideStatus");
-      const eventStatus = $("#eventStatus");
-      const battery = $(".battery");
+      const toast = $("#toast");
+      const hardwareKeys = [...document.querySelectorAll(".hardware-key")];
+      const keyTiles = [...document.querySelectorAll(".key-tile")];
 
-      const sequence = ["UP", "DOWN", "OK", "UP", "OK", "DOWN", "UP", "DOWN", "OK", "DOWN", "UP", "OK"];
-      const maxLevel = 12;
-      const defaultBest = 7;
-      const copy = {
-        ready:    { word: "READY",      prompt: "Press OK to begin",       hint: "OK START · HOLD OK BACK" },
-        playback: { word: "WATCH",      prompt: "Device is showing the cue", hint: "WATCH · DO NOT PRESS" },
-        input:    { word: "YOUR TURN",  prompt: "Repeat the sequence",       hint: "5 SEC EACH · HOLD OK BACK" },
-        success:  { word: "GOOD",       prompt: "Round cleared",              hint: "NEXT LEVEL LOADING" },
-        result:   { word: "WRONG",      prompt: "Sequence ended",             hint: "TRY AGAIN · HOLD OK BACK" },
-        timeout:  { word: "TIME UP",   prompt: "No key in time",              hint: "TRY AGAIN · HOLD OK BACK" },
-        max:      { word: "MAX CLEAR",  prompt: "MVP ceiling reached",         hint: "12 / 12 · TRY AGAIN" }
+      const TOKENS = ["UP", "DOWN", "OK"];
+      const PAGE_NAMES = {
+        boot: "开机", menu: "主菜单", difficulty: "选择难度", settings: "基础设置",
+        more: "更多功能", exit: "退出", shutdown: "已退出", ready: "游戏准备",
+        playback: "播放提示", input: "顺序复现", success: "本轮完成", result: "游戏结果"
       };
+      const MENU_ITEMS = [["开始游戏", "ready"], ["选择难度", "difficulty"], ["基础设置", "settings"], ["更多功能", "more"], ["退出", "exit"]];
+      const DIFFICULTIES = [
+        { label: "轻松", start: 2, timeout: 7, cue: 580, note: "起步 2 项 · 反应 7 秒" },
+        { label: "标准", start: 3, timeout: 5, cue: 460, note: "起步 3 项 · 反应 5 秒" },
+        { label: "挑战", start: 4, timeout: 4, cue: 360, note: "起步 4 项 · 反应 4 秒" }
+      ];
+      const MORE_ITEMS = [
+        ["玩法说明", "先观察亮起顺序，再用三枚实体键完整复现。每轮答对后，下一轮会重新随机。"],
+        ["最高记录", "最高记录按完整复现的序列长度计算，不代表健康或能力评价。"],
+        ["版本信息", "当前为单文件交互原型，界面与操作均可离线演示。"]
+      ];
+      const GAME_PAGES = new Set(["ready", "playback", "input", "success", "result"]);
+      const maxLevel = 12;
 
-      let state = "ready";
+      let page = "boot";
+      let menuIndex = 0;
+      let difficultyIndex = 1;
+      let difficultyCursor = 1;
+      let settingsIndex = 0;
+      let moreIndex = 0;
+      let exitIndex = 0;
+      let brightness = 75;
+      let soundOn = true;
       let level = 3;
-      let inputIndex = 0;
-      let playbackIndex = 0;
-      let activeToken = null;
-      let lastInput = null;
       let clearLevel = 0;
-      let failedAt = 0;
-      let reason = "WRONG";
       let best = readBest();
+      let sequence = [];
+      let playbackIndex = 0;
+      let inputIndex = 0;
+      let resultKind = "wrong";
       let timers = [];
-      let audioContext = null;
+      let feedbackTimer = null;
       let toastTimer = null;
       let holdTimer = null;
       let longFired = false;
-      let soundOn = true;
+      let audioContext = null;
 
       function readBest() {
         try {
-          const stored = localStorage.getItem("memory-passport-best");
-          if (stored === null) return defaultBest;
-          const value = Number(stored);
-          return Number.isInteger(value) && value >= 0 && value <= maxLevel ? value : defaultBest;
-        } catch (_) { return defaultBest; }
+          const value = Number(localStorage.getItem("memory-passport-best"));
+          return Number.isInteger(value) && value >= 0 && value <= maxLevel ? value : 0;
+        } catch (_) { return 0; }
       }
 
-      function writeBest() {
-        try { localStorage.setItem("memory-passport-best", String(best)); } catch (_) { /* file:// may deny storage */ }
+      function saveBest() {
+        try { localStorage.setItem("memory-passport-best", String(best)); } catch (_) { /* 原型仍可继续 */ }
       }
+
+      function generateSequence(length, pick = () => Math.floor(Math.random() * TOKENS.length)) {
+        return Array.from({ length }, () => TOKENS[pick()]);
+      }
+
+      const selfCheckA = generateSequence(3, () => 0);
+      const selfCheckB = generateSequence(4, () => 2);
+      console.assert(selfCheckA !== selfCheckB && selfCheckA.length === 3 && selfCheckB.length === 4,
+        "每轮应生成独立且长度正确的新序列");
 
       function clearTimers() {
         timers.forEach((timer) => { clearTimeout(timer); clearInterval(timer); });
         timers = [];
-        if (holdTimer) clearTimeout(holdTimer);
-        holdTimer = null;
       }
 
       function later(callback, delay) {
@@ -825,21 +992,19 @@
         toast.textContent = message;
         toast.classList.add("show");
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove("show"), 1900);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1700);
       }
 
-      function jump() {
-        mascot.classList.remove("jump");
-        void mascot.offsetWidth;
-        mascot.classList.add("jump");
+      function applyBrightness() {
+        screen.style.setProperty("--screen-dim", String((100 - brightness) / 250));
       }
 
-      function tone(token, duration = 150) {
+      function tone(token, duration = 130) {
         if (!soundOn) return;
         try {
           audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
           if (audioContext.state === "suspended") audioContext.resume();
-          const frequencies = { UP: 523, DOWN: 659, OK: 784, GOOD: 988, WRONG: 220, "TIME UP": 196 };
+          const frequencies = { UP: 523, DOWN: 659, OK: 784, GOOD: 988, WRONG: 220, TIMEOUT: 196 };
           const oscillator = audioContext.createOscillator();
           const gain = audioContext.createGain();
           oscillator.type = "square";
@@ -849,243 +1014,363 @@
           oscillator.connect(gain).connect(audioContext.destination);
           oscillator.start();
           oscillator.stop(audioContext.currentTime + duration / 1000);
-        } catch (_) { /* visual feedback remains the source of truth */ }
+        } catch (_) { /* 视觉提示始终保留 */ }
       }
 
-      function renderProgress() {
-        progressRow.innerHTML = "";
-        const filled = state === "input" ? inputIndex : state === "success" || state === "max" ? level : playbackIndex;
-        for (let index = 0; index < maxLevel; index += 1) {
-          const dot = document.createElement("span");
-          dot.className = "dot";
-          if (index < filled) dot.classList.add("is-filled");
-          if (state === "playback" && index === playbackIndex && activeToken) dot.classList.add("is-current");
-          if (state === "input" && index === inputIndex && inputIndex < level) dot.classList.add("is-current");
-          progressRow.appendChild(dot);
-        }
+      function progressDots(total, filled, current = -1) {
+        return Array.from({ length: total }, (_, index) =>
+          `<span class="progress-dot${index < filled ? " is-filled" : ""}${index === current ? " is-current" : ""}></span>`
+        ).join("");
+      }
+
+      function renderMenu() {
+        return `<section class="pixel-panel menu-panel">
+          <h2 class="page-heading">记忆通行证</h2>
+          <div class="menu-list" aria-label="游戏主菜单">
+            ${MENU_ITEMS.map(([label], index) => `<div class="menu-item${index === menuIndex ? " is-selected" : ""}"${index === menuIndex ? " aria-current=\"true\"" : ""}>${label}</div>`).join("")}
+          </div>
+          <p class="screen-note">上下选择 · 确定进入</p>
+        </section>`;
+      }
+
+      function renderDifficulty() {
+        return `<section class="pixel-panel">
+          <h2 class="page-heading">选择难度</h2>
+          <p class="page-subtitle">确定后返回主菜单</p>
+          <div class="choice-list">
+            ${DIFFICULTIES.map((item, index) => `<div class="choice-item${index === difficultyCursor ? " is-selected" : ""}"><b>${item.label}</b><small>${item.note}</small>${index === difficultyIndex ? `<span class="current-mark">当前</span>` : ""}</div>`).join("")}
+          </div>
+          <p class="screen-note">上下选择 · 确定保存 · 长按确定返回</p>
+        </section>`;
+      }
+
+      function renderSettings() {
+        const rows = [["屏幕亮度", `${brightness}%`], ["游戏音效", soundOn ? "开启" : "关闭"]];
+        return `<section class="pixel-panel">
+          <h2 class="page-heading">基础设置</h2>
+          <p class="page-subtitle">设置仅用于本次原型演示</p>
+          <div class="setting-list">
+            ${rows.map(([label, value], index) => `<div class="setting-item${index === settingsIndex ? " is-selected" : ""}"><span>${label}</span><span class="setting-value">${value}</span></div>`).join("")}
+          </div>
+          <p class="screen-note">上下选择 · 确定调整 · 长按确定返回</p>
+        </section>`;
+      }
+
+      function renderMore() {
+        const [label, copy] = MORE_ITEMS[moreIndex];
+        const shownCopy = label === "最高记录" ? `${copy} 当前最高为 ${best} 项。` : copy;
+        return `<section class="pixel-panel more-panel">
+          <h2 class="page-heading">更多功能</h2>
+          <div class="choice-list">
+            ${MORE_ITEMS.map(([item], index) => `<div class="choice-item${index === moreIndex ? " is-selected" : ""}"><b>${item}</b></div>`).join("")}
+          </div>
+          <div class="more-copy">${shownCopy}</div>
+          <p class="screen-note">上下查看 · 长按确定返回</p>
+        </section>`;
+      }
+
+      function renderExit() {
+        const options = ["返回主菜单", "退出演示"];
+        return `<section class="pixel-panel">
+          <h2 class="page-heading">确定退出？</h2>
+          <p class="page-subtitle">当前最高记录会保留</p>
+          <div class="choice-list" style="margin-top:30px">${options.map((label, index) => `<div class="choice-item${index === exitIndex ? " is-selected" : ""}"><b>${label}</b></div>`).join("")}</div>
+          <p class="screen-note">上下选择 · 确定执行</p>
+        </section>`;
+      }
+
+      function renderGame() {
+        const difficulty = DIFFICULTIES[difficultyIndex];
+        if (page === "ready") return `<section class="pixel-panel game-panel">
+          <div class="game-meta"><span>${difficulty.label}难度</span><span>最高 ${best}</span></div>
+          <div class="game-word">准备开始</div><p class="game-copy">记住亮起顺序，再按相同顺序复现。</p>
+          <div class="game-hint">按确定开始</div><p class="screen-note">长按确定返回主菜单</p>
+        </section>`;
+        if (page === "playback") return `<section class="pixel-panel game-panel">
+          <div class="game-meta"><span>第 ${level} 项</span><span>最高 ${best}</span></div>
+          <div class="game-word">请观察</div><p class="game-copy">跟随机器人记住顺序</p>
+          <div class="game-hint" id="roundProgress">准备播放</div><div class="progress-row">${progressDots(level, playbackIndex, playbackIndex)}</div>
+        </section>`;
+        if (page === "input") return `<section class="pixel-panel game-panel">
+          <div class="game-meta"><span>第 ${level} 项</span><span>最高 ${best}</span></div>
+          <div class="game-word">轮到你了</div><p class="game-copy">按刚才的顺序操作三枚键</p>
+          <div class="game-hint"><span id="inputProgress">已输入 ${inputIndex}/${level}</span> · <span id="countdown">${difficulty.timeout.toFixed(1)} 秒</span></div>
+          <div class="progress-row">${progressDots(level, inputIndex, inputIndex)}</div>
+        </section>`;
+        if (page === "success") return `<section class="pixel-panel game-panel is-success">
+          <div class="game-meta"><span>本轮完成</span><span>最高 ${best}</span></div>
+          <div class="game-word">答对了</div><p class="game-copy">下一轮会生成全新的随机顺序</p>
+          <div class="game-hint">即将增加一项</div><div class="progress-row">${progressDots(level, level)}</div>
+        </section>`;
+        const title = resultKind === "timeout" ? "时间到了" : resultKind === "complete" ? "全部通关" : "顺序不对";
+        const hint = resultKind === "complete" ? "已完成最高 12 项" : `本轮挑战到 ${level} 项`;
+        return `<section class="pixel-panel game-panel is-result">
+          <div class="game-meta"><span>本局结束</span><span>${difficulty.label}难度</span></div>
+          <div class="game-word">${title}</div><p class="game-copy">${hint}</p>
+          <div class="score-row"><div class="score-box">完成<strong>${clearLevel}</strong></div><div class="score-box">最高<strong>${best}</strong></div></div>
+          <div class="game-hint">按确定再来一局</div>
+        </section>`;
       }
 
       function render() {
-        const view = state === "timeout" ? copy.timeout : copy[state];
-        screen.dataset.state = state === "timeout" ? "result" : state;
-        stateWord.textContent = view.word;
-        prompt.textContent = view.prompt;
-        hint.textContent = view.hint;
-        bestText.textContent = `BEST ${best}`;
-        if (state === "ready") levelText.textContent = "READY";
-        else if (state === "result" || state === "timeout") levelText.textContent = `CLEAR ${clearLevel}`;
-        else if (state === "max") levelText.textContent = "12 / 12";
-        else levelText.textContent = `LEVEL ${level}/12`;
-
-        const muted = ["playback", "success", "result", "timeout", "max"].includes(state);
-        keyGrid.classList.toggle("is-muted", muted);
-        cards.forEach((card) => {
-          const token = card.dataset.token;
-          card.classList.toggle("is-active", activeToken === token);
-          card.classList.toggle("is-correct", state === "input" && lastInput === token && inputIndex > 0 && sequence[inputIndex - 1] === token);
-          card.classList.toggle("is-wrong", (state === "result" || state === "timeout") && lastInput === token && reason === "WRONG");
-        });
-        renderProgress();
-        const progress = state === "playback" ? `${Math.min(playbackIndex + (activeToken ? 1 : 0), level)}/${level}`
-          : state === "input" ? `${inputIndex}/${level}` : state === "success" ? `${level}/${level}` : "";
-        const status = state === "ready" ? "READY · waiting for OK"
-          : state === "playback" ? `PLAYBACK · ${progress}`
-          : state === "input" ? `YOUR TURN · ${progress} · ${lastInput || "waiting"}`
-          : state === "success" ? `GOOD · clear ${clearLevel}`
-          : state === "max" ? "MAX CLEAR · best 12"
-          : `${view.word} · clear ${clearLevel}`;
-        outsideStatus.textContent = status.toLowerCase();
-        eventStatus.textContent = status;
+        screen.dataset.page = page;
+        statusTitle.textContent = PAGE_NAMES[page];
+        outsideStatus.textContent = PAGE_NAMES[page];
+        gameDock.hidden = !GAME_PAGES.has(page);
+        pageNode.className = `page${GAME_PAGES.has(page) ? " is-game" : ""}`;
+        if (page === "boot") pageNode.innerHTML = `<section class="pixel-panel boot-panel"><div class="passport-mark">记</div><h2 class="boot-title">记忆通行证</h2><p class="page-subtitle">正在启动</p><div class="loading-dots" aria-label="正在加载"><span></span><span></span><span></span></div></section>`;
+        else if (page === "menu") pageNode.innerHTML = renderMenu();
+        else if (page === "difficulty") pageNode.innerHTML = renderDifficulty();
+        else if (page === "settings") pageNode.innerHTML = renderSettings();
+        else if (page === "more") pageNode.innerHTML = renderMore();
+        else if (page === "exit") pageNode.innerHTML = renderExit();
+        else if (page === "shutdown") pageNode.innerHTML = `<section class="pixel-panel shutdown-panel"><div class="passport-mark">休</div><h2 class="boot-title">已退出游戏</h2><p class="page-subtitle">按确定重新开机</p></section>`;
+        else pageNode.innerHTML = renderGame();
+        applyBrightness();
       }
 
-      function startInputClock() {
-        let remaining = 5;
-        const interval = setInterval(() => {
-          remaining -= .1;
-          if (state !== "input") { clearInterval(interval); return; }
-          hint.textContent = `TIME ${Math.max(0, remaining).toFixed(1)}S · HOLD OK BACK`;
-          if (remaining <= 0) {
-            clearInterval(interval);
-            finishResult("TIME UP");
-          }
-        }, 100);
-        timers.push(interval);
-      }
-
-      function beginPlayback() {
+      function setPage(next) {
         clearTimers();
-        state = "playback";
+        page = next;
+        render();
+      }
+
+      function goBoot() {
+        setPage("boot");
+        later(() => setPage("menu"), 1250);
+      }
+
+      function goMenu() {
+        menuIndex = 0;
+        setPage("menu");
+      }
+
+      function goBack() {
+        if (page === "menu") return;
+        if (page === "shutdown") { goBoot(); return; }
+        goMenu();
+      }
+
+      function moveSelection(current, direction, total) {
+        return (current + direction + total) % total;
+      }
+
+      function flashGameToken(token, duration = 230) {
+        if (!GAME_PAGES.has(page)) return;
+        const positions = { UP: "16.667%", DOWN: "50%", OK: "83.333%" };
+        robot.style.left = positions[token];
+        robot.classList.remove("is-jumping");
+        void robot.offsetWidth;
+        robot.classList.add("is-jumping");
+        keyTiles.forEach((tile) => tile.classList.toggle("is-active", tile.dataset.token === token));
+        clearTimeout(feedbackTimer);
+        feedbackTimer = setTimeout(() => keyTiles.forEach((tile) => tile.classList.remove("is-active")), duration);
+      }
+
+      function startSession() {
+        level = DIFFICULTIES[difficultyIndex].start;
+        clearLevel = 0;
+        beginRound();
+      }
+
+      function beginRound() {
+        clearTimers();
+        sequence = generateSequence(level);
         playbackIndex = 0;
         inputIndex = 0;
-        activeToken = null;
-        lastInput = null;
+        page = "playback";
         render();
-        later(playNextCue, 450);
+        later(playNextCue, 520);
       }
 
       function playNextCue() {
-        if (state !== "playback") return;
-        if (playbackIndex >= level) {
-          activeToken = null;
-          state = "input";
+        if (page !== "playback") return;
+        if (playbackIndex >= sequence.length) {
+          page = "input";
           inputIndex = 0;
           render();
           startInputClock();
           return;
         }
-        activeToken = sequence[playbackIndex];
-        tone(activeToken, 230);
-        render();
+        const difficulty = DIFFICULTIES[difficultyIndex];
+        const token = sequence[playbackIndex];
+        flashGameToken(token, difficulty.cue);
+        tone(token, Math.min(220, difficulty.cue));
+        const progress = $("#roundProgress");
+        if (progress) progress.textContent = `正在播放 ${playbackIndex + 1}/${level}`;
         later(() => {
-          activeToken = null;
           playbackIndex += 1;
           render();
-          later(playNextCue, 160);
-        }, 360);
+          later(playNextCue, 170);
+        }, difficulty.cue);
       }
 
-      function startSession() {
+      function startInputClock() {
+        const total = DIFFICULTIES[difficultyIndex].timeout;
+        let remaining = total;
+        const timer = setInterval(() => {
+          remaining = Math.max(0, remaining - .1);
+          const countdown = $("#countdown");
+          if (countdown) countdown.textContent = `${remaining.toFixed(1)} 秒`;
+          if (remaining <= 0) finishResult("timeout");
+        }, 100);
+        timers.push(timer);
+      }
+
+      function finishResult(kind) {
         clearTimers();
-        level = 3;
-        inputIndex = 0;
-        playbackIndex = 0;
-        clearLevel = 0;
-        lastInput = null;
-        activeToken = null;
-        state = "ready";
+        resultKind = kind;
+        page = "result";
         render();
-        showToast("READY · playback starts in a moment");
-        later(beginPlayback, 500);
+        tone(kind === "timeout" ? "TIMEOUT" : kind === "complete" ? "GOOD" : "WRONG", 240);
       }
 
-      function finishResult(resultReason) {
+      function handleGameInput(token) {
+        if (page !== "input") return;
         clearTimers();
-        reason = resultReason;
-        state = resultReason === "TIME UP" ? "timeout" : "result";
-        failedAt = level;
-        activeToken = null;
-        render();
-        tone(resultReason, 240);
-        showToast(resultReason === "TIME UP" ? "TIME UP · no input received" : `WRONG · failed at level ${failedAt}`);
-      }
-
-      function handleToken(token) {
-        if (state === "ready" || state === "result" || state === "timeout" || state === "max") {
-          if (token === "OK") startSession();
-          return;
-        }
-        if (state !== "input") return;
-        activeToken = token;
-        lastInput = token;
         tone(token, 120);
-        jump();
         if (token !== sequence[inputIndex]) {
-          render();
-          later(() => finishResult("WRONG"), 220);
+          later(() => finishResult("wrong"), 220);
           return;
         }
         inputIndex += 1;
-        render();
-        if (inputIndex >= level) {
-          clearTimers();
-          clearLevel = level;
-          if (clearLevel > best) { best = clearLevel; writeBest(); }
-          state = "success";
-          activeToken = null;
-          tone("GOOD", 210);
+        if (inputIndex < level) {
           render();
-          later(() => {
-            if (level >= maxLevel) { state = "max"; render(); return; }
-            level += 1;
-            beginPlayback();
-          }, 900);
+          startInputClock();
           return;
         }
-        activeToken = null;
+        clearLevel = level;
+        if (clearLevel > best) { best = clearLevel; saveBest(); }
+        page = "success";
         render();
-        clearTimers();
-        startInputClock();
+        flashGameToken(token, 420);
+        tone("GOOD", 210);
+        later(() => {
+          if (level >= maxLevel) finishResult("complete");
+          else { level += 1; beginRound(); }
+        }, 900);
       }
 
-      function backToReady() {
-        clearTimers();
-        state = "ready";
-        activeToken = null;
-        lastInput = null;
-        level = 3;
-        clearLevel = 0;
-        render();
-        showToast("BACK · ready screen");
+      function handleShortPress(token) {
+        const direction = token === "UP" ? -1 : token === "DOWN" ? 1 : 0;
+        if (page === "boot") {
+          if (token === "OK") setPage("menu");
+          return;
+        }
+        if (page === "shutdown") {
+          if (token === "OK") goBoot();
+          return;
+        }
+        if (page === "menu") {
+          if (direction) menuIndex = moveSelection(menuIndex, direction, MENU_ITEMS.length);
+          else {
+            const next = MENU_ITEMS[menuIndex][1];
+            if (next === "difficulty") difficultyCursor = difficultyIndex;
+            setPage(next);
+            return;
+          }
+          render();
+          return;
+        }
+        if (page === "difficulty") {
+          if (direction) difficultyCursor = moveSelection(difficultyCursor, direction, DIFFICULTIES.length);
+          else {
+            difficultyIndex = difficultyCursor;
+            showToast(`已选择${DIFFICULTIES[difficultyIndex].label}难度`);
+            goMenu();
+            return;
+          }
+          render();
+          return;
+        }
+        if (page === "settings") {
+          if (direction) settingsIndex = moveSelection(settingsIndex, direction, 2);
+          else if (settingsIndex === 0) brightness = brightness === 100 ? 50 : brightness + 25;
+          else soundOn = !soundOn;
+          render();
+          return;
+        }
+        if (page === "more") {
+          if (direction) moreIndex = moveSelection(moreIndex, direction, MORE_ITEMS.length);
+          render();
+          return;
+        }
+        if (page === "exit") {
+          if (direction) exitIndex = moveSelection(exitIndex, direction, 2);
+          else if (exitIndex === 0) goMenu();
+          else setPage("shutdown");
+          render();
+          return;
+        }
+        if (page === "ready" && token === "OK") { startSession(); return; }
+        if (page === "input") { handleGameInput(token); return; }
+        if (page === "result" && token === "OK") startSession();
       }
 
-      function preview(name) {
-        clearTimers();
-        activeToken = null;
-        lastInput = null;
-        level = 4;
-        inputIndex = name === "input" ? 2 : 0;
-        playbackIndex = name === "playback" ? 1 : 0;
-        clearLevel = name === "result" ? 3 : name === "max" ? 12 : 0;
-        reason = name === "result" ? "WRONG" : "TIME UP";
-        state = name === "ready" ? "ready" : name;
-        if (name === "playback") activeToken = sequence[1];
-        if (name === "max") { level = 12; clearLevel = 12; }
-        render();
-        showToast(`Preview · ${name.toUpperCase()}`);
+      function setHardwareActive(token, active) {
+        hardwareKeys.forEach((button) => button.classList.toggle("is-active", active && button.dataset.token === token));
       }
 
-      function bindLongPress(button) {
+      function beginPress(token) {
+        setHardwareActive(token, true);
+        if (page !== "playback") flashGameToken(token);
+        if (token !== "OK") {
+          handleShortPress(token);
+          return;
+        }
+        longFired = false;
+        clearTimeout(holdTimer);
+        holdTimer = setTimeout(() => {
+          longFired = true;
+          goBack();
+        }, 700);
+      }
+
+      function endPress(token) {
+        setHardwareActive(token, false);
+        if (token !== "OK") return;
+        clearTimeout(holdTimer);
+        holdTimer = null;
+        if (!longFired) handleShortPress("OK");
+        longFired = false;
+      }
+
+      hardwareKeys.forEach((button) => {
         const token = button.dataset.token;
-        button.addEventListener("pointerdown", () => {
-          longFired = false;
-          holdTimer = setTimeout(() => {
-            longFired = true;
-            if (token === "OK") backToReady();
-            else showToast("HOLD OK BACK");
-          }, 650);
-        });
-        button.addEventListener("pointerup", () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; });
-        button.addEventListener("pointercancel", () => { if (holdTimer) clearTimeout(holdTimer); holdTimer = null; });
-        button.addEventListener("click", (event) => {
+        button.addEventListener("pointerdown", (event) => {
           event.preventDefault();
-          if (longFired) { longFired = false; return; }
-          handleToken(token);
+          button.setPointerCapture(event.pointerId);
+          beginPress(token);
         });
-      }
-
-      cards.forEach(bindLongPress);
-      $("#startButton").addEventListener("click", startSession);
-      $("#backButton").addEventListener("click", backToReady);
-      $("#soundToggle").addEventListener("change", (event) => {
-        soundOn = event.target.checked;
-        showToast(soundOn ? "SOUND ON" : "SOUND OFF · visual fallback active");
-      });
-      $("#batteryToggle").addEventListener("change", (event) => {
-        battery.hidden = !event.target.checked;
-      });
-      document.querySelectorAll("[data-preview]").forEach((button) => {
-        button.addEventListener("click", () => preview(button.dataset.preview));
+        button.addEventListener("pointerup", (event) => {
+          event.preventDefault();
+          endPress(token);
+        });
+        button.addEventListener("pointercancel", () => {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+          longFired = false;
+          setHardwareActive(token, false);
+        });
       });
 
       document.addEventListener("keydown", (event) => {
         const token = event.key === "ArrowUp" ? "UP" : event.key === "ArrowDown" ? "DOWN" : event.key === "Enter" ? "OK" : null;
         if (!token || event.repeat) return;
         event.preventDefault();
-        if (token === "OK") {
-          holdTimer = setTimeout(() => { longFired = true; backToReady(); }, 650);
-          return;
-        }
-        handleToken(token);
-      });
-      document.addEventListener("keyup", (event) => {
-        if (event.key !== "Enter") return;
-        if (holdTimer) clearTimeout(holdTimer);
-        holdTimer = null;
-        if (!longFired) handleToken("OK");
-        longFired = false;
+        beginPress(token);
       });
 
-      render();
+      document.addEventListener("keyup", (event) => {
+        const token = event.key === "ArrowUp" ? "UP" : event.key === "ArrowDown" ? "DOWN" : event.key === "Enter" ? "OK" : null;
+        if (!token) return;
+        event.preventDefault();
+        endPress(token);
+      });
+
+      $("#restartButton").addEventListener("click", goBoot);
+      $("#menuButton").addEventListener("click", goMenu);
+      goBoot();
     })();
   </script>
 </body>
